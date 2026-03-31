@@ -4,7 +4,9 @@
 
 ## spring boot 세팅 
 
-Java(JDK 17 버전을 사용) - Amazon Corretto 17 
+## Java(JDK 17 버전을 사용) - Amazon Corretto 17   
+https://aws.amazon.com/ko/corretto/
+개발 툴(IDE): IntelliJ IDEA (인텔리제이)를 사용 
 
 <img width="1919" height="948" alt="spring boot" src="https://github.com/user-attachments/assets/c4b2d36b-580f-48ad-b06f-0402c1b27ae5" />
 
