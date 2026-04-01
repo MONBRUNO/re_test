@@ -194,3 +194,7 @@ spring.jpa.properties.hibernate.format_sql=true
 <img width="1198" height="990" alt="image" src="https://github.com/user-attachments/assets/933543ce-e8a6-4c0c-be90-da17866b4bf6" />
 환경 변수에 직접 경로를 입력하니 해결이 되었다 
 
+## 식제료 도메인 기초 세팅 
+
+<img width="1919" height="1008" alt="image" src="https://github.com/user-attachments/assets/b6394212-4c07-4a7b-a4d1-910358cce01e" />
+
