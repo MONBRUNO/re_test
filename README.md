@@ -198,6 +198,142 @@ spring.jpa.properties.hibernate.format_sql=true
 
 <img width="1919" height="1008" alt="image" src="https://github.com/user-attachments/assets/b6394212-4c07-4a7b-a4d1-910358cce01e" />
 
+Ingredient.java (domain 폴더) : 식재료 설계도
+```
+package com.example.Naengbuhae.domain;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import java.time.LocalDate;
+
+// @Entity: "스프링아, 이 클래스 모양대로 Supabase DB에 '식재료' 테이블을 만들어줘!" 라는 뜻
+@Entity
+@Getter @Setter // 롬복(Lombok) 기능: 숨겨진 데이터(필드)를 꺼내고(Get) 바꿀(Set) 수 있게 해줌
+@NoArgsConstructor // 롬복 기능: 텅 빈 기본 설계도(기본 생성자)를 알아서 만들어줌
+public class Ingredient {
+
+    // @Id: "이게 식재료들을 구분하는 고유 번호(주민등록번호)야!" 라는 뜻 (Primary Key)
+    @Id
+    // @GeneratedValue: "고유 번호는 내가 안 넣을 테니까, DB 네가 1, 2, 3... 알아서 1씩 올려가며 넣어줘!"
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // @Column: "이 데이터는 DB의 기둥(컬럼)이 될 건데, 이름은 무조건 있어야 해! (비어있으면 안 됨)"
+    @Column(nullable = false)
+    private String name; // 식재료 이름 (예: 계란)
+
+    private Integer quantity; // 수량 (예: 10)
+
+    private LocalDate expirationDate; // 유통기한 (예: 2026-04-15)
+
+    // 식재료를 처음 만들 때 이름, 수량, 유통기한을 한 번에 쏙 넣기 위해 만든 틀(생성자)
+    public Ingredient(String name, Integer quantity, LocalDate expirationDate) {
+        this.name = name;
+        this.quantity = quantity;
+        this.expirationDate = expirationDate;
+    }
+}
+```
+
+IngredientRepository.java (repository 폴더) : DB 창고지기
+```
+package com.example.Naengbuhae.repository;
+
+import com.example.Naengbuhae.domain.Ingredient;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+// @Repository: "스프링아, 얘는 DB 창고지기(Repository)니까 네가 관리해 줘!"
+@Repository
+// JpaRepository<Ingredient, Long>: 마법의 지팡이!
+// "이 창고지기는 'Ingredient(식재료)' 데이터를 다룰 거고, 고유 번호는 'Long(숫자)' 타입이야."
+// 이걸 상속(extends)받는 순간, 저장(save), 찾기(findById), 전체조회(findAll) 같은 SQL 코드를 안 짜도 다 쓸 수 있음!
+public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
+}
+```
+
+IngredientService.java (service 폴더) : 프로젝트의 두뇌
+```
+package com.example.Naengbuhae.service;
+
+import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.repository.IngredientRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+// @Service: "얘가 우리 프로그램의 비즈니스 로직(머리 쓰는 일)을 담당하는 애야!"
+@Service
+// @Transactional(readOnly = true): "여기 있는 기능들은 기본적으로 DB를 '읽기'만 할 거야. (조회 속도가 빨라짐!)"
+@Transactional(readOnly = true)
+// @RequiredArgsConstructor: 롬복 기능. 창고지기(Repository)를 자동으로 섭외해서 연결해 줌.
+@RequiredArgsConstructor
+public class IngredientService {
+
+    // 두뇌(Service)가 일을 하려면 창고지기(Repository)가 무조건 필요함!
+    private final IngredientRepository ingredientRepository;
+
+    // --- 1. 식재료 저장 기능 ---
+    // @Transactional: "이 기능은 DB에 데이터를 쓰는 거니까, 혹시 에러 나면 저장 취소(롤백)하고 완벽하게 처리해 줘!"
+    @Transactional
+    public Long saveIngredient(Ingredient ingredient) {
+        ingredientRepository.save(ingredient); // 창고지기한테 "이 식재료 저장해!" 라고 시킴
+        return ingredient.getId(); // 저장이 잘 끝났으면, DB가 부여한 고유 번호를 돌려줌
+    }
+
+    // --- 2. 식재료 전체 조회 기능 ---
+    public List<Ingredient> findAllIngredients() {
+        return ingredientRepository.findAll(); // 창고지기한테 "창고에 있는 식재료 싹 다 가져와!" 라고 시킴
+    }
+}
+```
+
+IngredientController.java (controller 폴더) : 레스토랑 안내 데스크
+```
+package com.example.Naengbuhae.controller;
+
+import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.service.IngredientService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+// @RestController: "얘는 외부(브라우저, Postman, AI 팀원)의 요청을 받는 API 안내 데스크야!"
+@RestController
+// @RequestMapping: "이 안내 데스크의 주소는 'http://localhost:8080/api/ingredients'야!"
+@RequestMapping("/api/ingredients")
+@RequiredArgsConstructor // 두뇌(Service)를 자동으로 섭외해서 연결해 줌.
+public class IngredientController {
+
+    // 안내 데스크는 들어온 요청을 처리하기 위해 두뇌(Service)에게 일을 넘겨야 함!
+    private final IngredientService ingredientService;
+
+    // --- API 1: 식재료 새로 등록하기 (POST 요청) ---
+    // @PostMapping: 누군가 이 주소로 POST(저장) 요청을 보내면 이 메서드가 실행됨
+    @PostMapping
+    // @RequestBody: "요청으로 날아온 JSON 데이터(계란 10개 등)를 Ingredient 객체로 찰떡같이 변환해서 받아줘!"
+    public Long create(@RequestBody Ingredient ingredient) {
+        // 두뇌(Service)에게 저장을 부탁하고, 성공하면 받은 고유 번호를 돌려줌
+        return ingredientService.saveIngredient(ingredient);
+    }
+
+    // --- API 2: 냉장고 속 식재료 다 보기 (GET 요청) ---
+    // @GetMapping: 누군가 이 주소로 GET(조회) 요청을 보내면 이 메서드가 실행됨
+    @GetMapping
+    public List<Ingredient> list() {
+        // 두뇌(Service)에게 싹 다 찾아오라고 시킨 결과를 리스트 형태(JSON)로 뱉어줌
+        return ingredientService.findAllIngredients();
+    }
+}
+```
+
+
+
 ## 포트 번호 막히는 거 해결하기 
 1️⃣ Supabase PostgREST API 사용하기 (비추천 🙅‍♂️)
 원리: Supabase는 DB(5432 포트)를 직접 안 찔러도, 웹사이트 접속하는 것처럼 443 포트(HTTPS)로 데이터를 넣고 뺄 수 있는 'REST API' 기능을 기본으로 제공해. 학교 와이파이도 443 포트는 웹서핑을 해야 하니까 절대 못 막거든! 그래서 이 방법을 쓰면 와이파이에서도 뻥뻥 뚫려.
