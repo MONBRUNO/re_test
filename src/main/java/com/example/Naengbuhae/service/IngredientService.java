@@ -39,4 +39,22 @@ public class IngredientService {
         // 창고지기한테 "이 번호표(id) 가진 식재료 찾아서 버려!" 라고 시킴
         ingredientRepository.deleteById(id);
     }
+
+    // --- 4. 식재료 수정 기능 (Update) ---
+    // @Transactional이 여기서 진짜 중요한 마법을 부림!
+    @Transactional
+    public Long updateIngredient(Long id, IngredientRequestDto requestDto) {
+        // 1. 창고에서 수정할 식재료를 번호(id)로 찾아온다. (없으면 에러 뱉음!)
+        Ingredient ingredient = ingredientRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 식재료가 없습니다. id=" + id));
+
+        // 2. 찾아온 원본 식재료의 정보를 새 택배 상자(DTO)에 담긴 정보로 바꿔치기!
+        ingredient.setName(requestDto.getName());
+        ingredient.setQuantity(requestDto.getQuantity());
+        ingredient.setExpirationDate(requestDto.getExpirationDate());
+
+        // 3. 엥? 저장(save)을 안 하네?!
+        // 👉 맞음! 스프링 JPA의 '변경 감지' 마법 덕분에 값만 바꿔도 알아서 DB에 덮어씌워짐!
+        return ingredient.getId();
+    }
 }

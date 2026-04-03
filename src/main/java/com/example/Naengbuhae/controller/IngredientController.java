@@ -35,4 +35,12 @@ public class IngredientController {
         ingredientService.deleteIngredient(id);
         return id + "번 식재료가 냉장고에서 삭제되었습니다! 🗑️";
     }
+
+    // --- API 4: 식재료 수정하기 (PUT 요청) ---
+    // @PutMapping: 누군가 주소 뒤에 번호(id)를 달고 PUT(수정) 요청을 보내면 실행됨
+    @PutMapping("/{id}")
+    public Long update(@PathVariable Long id, @RequestBody IngredientRequestDto requestDto) {
+        // 두뇌(Service)에게 "id번 식재료를 이 새 정보(requestDto)로 바꿔줘!" 라고 시킴
+        return ingredientService.updateIngredient(id, requestDto);
+    }
 }
