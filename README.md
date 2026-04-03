@@ -758,3 +758,15 @@ public class RecipeController {
 }
 ```
 
+## 테스트 
+
+이제 터미널에서 까만 화면 보면서 curl 칠 필요 없어! 아까 우리가 달아둔 스웨거 메뉴판으로 가서 바로 테스트해 보자.
+
+1. 크롬에서 http://localhost:8080/swagger-ui/index.html 새로고침!
+2. 화면에 ingredient-controller 밑에 새로 생긴 recipe-controller 메뉴가 짠! 하고 나타난 걸 확인해.
+3. 초록색 POST /api/recipes 누르고 [Try it out] 클릭!
+4. 데이터 칸(Request body)에 요리 이름(title), 만드는 법(instructions), 조리 시간(cookingTime) 적당히 입력하고 [Execute] 파란 버튼 클릭!
+5. 밑에 응답 결과(Response body)에 숫자 **1**이 딱 떨어지면 완벽하게 성공한 거야.
+
+
+
