@@ -494,3 +494,36 @@ public class IngredientController {
 
 성공 
 
+## 삭제하기 만들기 
+IngredientService.java(수정)
+```
+// --- 3. 식재료 삭제 기능 ---
+    @Transactional
+    public void deleteIngredient(Long id) {
+        // 창고지기한테 "이 번호표(id) 가진 식재료 찾아서 버려!" 라고 시킴
+        ingredientRepository.deleteById(id);
+    }
+```
+
+IngredientController.java(수정)
+```
+// --- API 3: 식재료 삭제하기 (DELETE 요청) ---
+    // @DeleteMapping: 누군가 주소 뒤에 번호(id)를 달고 DELETE 요청을 보내면 실행됨
+    // 예: /api/ingredients/1 (1번 지워줘!)
+    @DeleteMapping("/{id}")
+    public String delete(@PathVariable Long id) {
+        ingredientService.deleteIngredient(id);
+        return id + "번 식재료가 냉장고에서 삭제되었습니다! 🗑️";
+    }
+```
+
+
+<img width="1919" height="1008" alt="image" src="https://github.com/user-attachments/assets/ee6a2ac1-8616-4992-9a36-718f2638072d" />
+
+```
+curl.exe -X DELETE http://localhost:8080/api/ingredients/1
+```
+
+<img width="1919" height="1003" alt="image" src="https://github.com/user-attachments/assets/7007d057-7d33-4c64-b9a2-0bc06b8d8926" />
+
+
