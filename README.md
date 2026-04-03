@@ -771,7 +771,7 @@ public class RecipeController {
 <img width="1919" height="1007" alt="image" src="https://github.com/user-attachments/assets/d9b0b942-b6ab-499c-9e92-0b324ce5f8a8" />
 
 ## 지금까지 한 거 정리 
-
+```
 📦 Naengbuhae (스마트 냉장고 관리 백엔드)
  ┣ 📂 src/main/java/com/example/Naengbuhae
  │ ┣ 📂 controller       # 클라이언트의 요청을 받고 응답하는 안내 데스크
@@ -797,3 +797,5 @@ public class RecipeController {
  │   ┗ 📜 RecipeService.java
  │
  ┗ 📜 build.gradle       # 외부 라이브러리(Swagger 등) 의존성 관리
+```
+본 프로젝트는 엔티티(Entity)의 외부 노출을 막고 보안과 유연성을 높이기 위해, Controller와 Service 계층 간의 데이터 통신에 DTO(Data Transfer Object) 패턴을 적극적으로 도입하여 설계했습니다. 
