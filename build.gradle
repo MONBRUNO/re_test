@@ -1,44 +1,70 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.0.5'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '4.0.5'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-h2console'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'com.h2database:h2' // 데이터베이스 오류나면 이걸로...
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    runtimeOnly 'org.postgresql:postgresql' // supabase 데이터 연결
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0' //.env파일 읽게
-    // Swagger (springdoc-openapi)
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0'
+    // ==========================================
+    // 1. 코어 웹 & DB (프로젝트의 뼈대)
+    // ==========================================
+    implementation 'org.springframework.boot:spring-boot-starter-web' // 톰캣 내장 웹 서버 (수정 완료!)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // DB를 자바 코드로 쉽게 다루게 해주는 마법 (JPA)
+
+    // ==========================================
+    // 2. 데이터베이스 (원희의 Supabase 창고)
+    // ==========================================
+    runtimeOnly 'org.postgresql:postgresql' // Supabase (PostgreSQL) 진짜 클라우드 DB 연결용!
+    runtimeOnly 'com.h2database:h2' // 로컬 메모리 DB (팀원이 테스트용으로 썼던 비상용 DB)
+    implementation 'org.springframework.boot:spring-boot-h2console' // H2 DB를 웹 브라우저에서 볼 수 있게 해줌
+
+    // ==========================================
+    // 3. 보안 & 인증 (팀원의 로그인 방어막)
+    // ==========================================
+    implementation 'org.springframework.boot:spring-boot-starter-security' // 스프링 시큐리티 (철통 보안 문지기)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // JWT 로그인 토큰 생성 및 검증 (최신 버전 0.12.5)
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+
+    // ==========================================
+    // 4. 개발 편의 기능 & 설정
+    // ==========================================
+    compileOnly 'org.projectlombok:lombok' // Getter, Setter 등 반복 코드를 줄여주는 착한 마법사
+    annotationProcessor 'org.projectlombok:lombok'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0' // .env 파일에 숨겨둔 시크릿 키를 읽어오게 해줌
+
+    // ==========================================
+    // 5. API 문서 자동화
+    // ==========================================
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0' // 스웨거 (Swagger) API 메뉴판 자동 생성기
+
+    // ==========================================
+    // 6. 테스트 (서버 켜기 전 실험실)
+    // ==========================================
+    testImplementation 'org.springframework.boot:spring-boot-starter-test' // 스프링 부트 기본 통합 테스트 (수정 완료!)
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test' // DB(JPA) 전용 테스트 부품
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // 테스트 실행기
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
