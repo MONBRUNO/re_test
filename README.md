@@ -883,7 +883,11 @@ public class SwaggerConfig {
 
 ## 회원가입,로그인
 
+회원가입 됨
+<img width="1047" height="304" alt="image" src="https://github.com/user-attachments/assets/a3583b52-36cf-4f79-86d1-5ebf8e3cec0c" />
 
+로그인 됨
+<img width="1053" height="301" alt="image" src="https://github.com/user-attachments/assets/c3ed196e-56c0-4cc8-a503-4ef6c790653e" />
 
 
 
