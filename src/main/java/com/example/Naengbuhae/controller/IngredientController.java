@@ -3,6 +3,7 @@ package com.example.Naengbuhae.controller;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.service.IngredientService;
+import jakarta.validation.Valid; // 방어막 부품 딱 하나만 추가 임포트!
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,8 +17,9 @@ public class IngredientController {
     private final IngredientService ingredientService;
 
     // POST: 저장 요청이 오면 '받는 택배 상자(RequestDto)'로 안전하게 받기
+    // @RequestBody 앞에 @Valid 방어막 추가!
     @PostMapping
-    public Long create(@RequestBody IngredientRequestDto requestDto) {
+    public Long create(@Valid @RequestBody IngredientRequestDto requestDto) {
         return ingredientService.saveIngredient(requestDto);
     }
 
@@ -28,8 +30,6 @@ public class IngredientController {
     }
 
     // --- API 3: 식재료 삭제하기 (DELETE 요청) ---
-    // @DeleteMapping: 누군가 주소 뒤에 번호(id)를 달고 DELETE 요청을 보내면 실행됨
-    // 예: /api/ingredients/1 (1번 지워줘!)
     @DeleteMapping("/{id}")
     public String delete(@PathVariable Long id) {
         ingredientService.deleteIngredient(id);
@@ -37,9 +37,9 @@ public class IngredientController {
     }
 
     // --- API 4: 식재료 수정하기 (PUT 요청) ---
-    // @PutMapping: 누군가 주소 뒤에 번호(id)를 달고 PUT(수정) 요청을 보내면 실행됨
+    //  수정할 때도 이상한 값 들어오면 안 되니까 여기도 @Valid 방어막 추가!
     @PutMapping("/{id}")
-    public Long update(@PathVariable Long id, @RequestBody IngredientRequestDto requestDto) {
+    public Long update(@PathVariable Long id, @Valid @RequestBody IngredientRequestDto requestDto) {
         // 두뇌(Service)에게 "id번 식재료를 이 새 정보(requestDto)로 바꿔줘!" 라고 시킴
         return ingredientService.updateIngredient(id, requestDto);
     }

@@ -42,11 +42,14 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/swagger-resources/**"
+                                "/swagger-resources/**",
+                                "/api/ingredients", // 테스트를 위해 임시로 만든 통로2
+                                "/api/ingredients/**",// 테스트를 위해 임시로 만든 통로
+                                "/error" //에러를 출력하기 위한
                         ).permitAll()
                         .anyRequest().authenticated() // 나머지는 다 신분증(JWT) 검사해!
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                );
+                //.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

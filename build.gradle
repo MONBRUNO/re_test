@@ -63,6 +63,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test' // 스프링 부트 기본 통합 테스트 (수정 완료!)
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test' // DB(JPA) 전용 테스트 부품
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // 테스트 실행기
+
+    // 유효성 검사 (Validation) 방어막 추가!
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
 }
 
 tasks.named('test') {
