@@ -19,7 +19,7 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    // 🌟 원희가 번뜩 떠올린 바로 그 암호화 빈(Bean)! 서버 에러 방지용!
+    // 암호화 빈(Bean)! 서버 에러 방지용!
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
