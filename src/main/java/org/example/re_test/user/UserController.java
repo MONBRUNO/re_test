@@ -14,7 +14,6 @@ public class UserController {
 
     @PostMapping("/signup")
     public ApiResponse signup(@RequestBody SignupRequest request) {
-
         String result = userService.signup(request.getUsername(), request.getPassword());
 
         if (result.equals("회원가입 성공")) {
@@ -26,7 +25,6 @@ public class UserController {
 
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest request) {
-
         User user = userService.login(request.getUsername(), request.getPassword());
 
         if (user == null) {
@@ -39,7 +37,6 @@ public class UserController {
 
     @GetMapping("/me")
     public ApiResponse me(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return new ApiResponse(false, "토큰이 없습니다.");
         }
