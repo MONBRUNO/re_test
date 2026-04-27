@@ -881,20 +881,7 @@ public class SwaggerConfig {
 }
 ```
 
-### 레시피-유저 연관관계 매핑 및 개인 데이터 격리 로직 추가 
 
-📝 변경 내용 및 핵심 로직 요약
-
-   1. Recipe.java (Entity): User와의 @ManyToOne 관계를 맺고, user_id 외래키 컬럼을 추가, 생성자도 유저 정보를 포함하도록 업데이트
-   2. RecipeRepository.java: findByUser(User user)를 추가하여, DB에서 특정 사용자의 레시피만 골라올 수 있도록 했음
-   3. RecipeRequestDto.java: toEntity(User user) 메서드로 수정하여, DTO를 엔티티로 바꿀 때 작성자 정보를 함께 넣을 수 있게 했음
-   4. RecipeService.java:
-       * 저장/조회: 로그인한 유저 정보를 찾아 연결하거나 필터링
-       * 수정/삭제: recipe.getUser().getUsername().equals(username) 로직을 통해 본인이 작성한 레시피가 아닐 경우 에러를 던지도록 권한 체크를 강화
-   5. RecipeController.java: Principal 객체를 사용해 토큰에 담긴 사용자 이름을 가져오고, 모든 API에서 이를 서비스로 전달하여 기능을 완성
-
-밑에 있는 이미지는 데이터베이스에 제대로 들어가는지 확인된 거
-<img width="1194" height="164" alt="image" src="https://github.com/user-attachments/assets/7f028163-1f11-45d2-8b08-fb5957a5c0a2" />
 
 
 
