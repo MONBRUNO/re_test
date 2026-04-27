@@ -1,6 +1,7 @@
 package com.example.Naengbuhae.dto;
 
 import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.user.User;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -28,7 +29,7 @@ public class IngredientRequestDto {
     private LocalDate expirationDate;
 
     // 편의 기능: "이 택배 상자(DTO)에 든 내용물을 실제 DB용 식재료(Entity)로 변환해 줘!"
-    public Ingredient toEntity() {
-        return new Ingredient(name, quantity, expirationDate);
+    public Ingredient toEntity(User user) {
+        return new Ingredient(user, name, quantity, expirationDate);
     }
 }
