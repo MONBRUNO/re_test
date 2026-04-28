@@ -70,4 +70,12 @@ public class RecipeService {
 
         recipeRepository.delete(recipe);
     }
+
+    // 5. 관리자용 레시피 강제 삭제 (권한 체크 없음 - 컨트롤러에서 ADMIN 체크함)
+    @Transactional
+    public void deleteRecipeByAdmin(Long id) {
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다. id=" + id));
+        recipeRepository.delete(recipe);
+    }
 }
