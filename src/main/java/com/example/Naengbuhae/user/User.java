@@ -70,13 +70,18 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+
     protected User() {
     }
 
     // 회원가입용 생성자
-    public User(String username, String encodedPassword) {
+    public User(String username, String encodedPassword, UserRole role) {
         this.username = username;
         this.password = encodedPassword;
+        this.role = role;
     }
 
     public Long getId() {
@@ -89,6 +94,10 @@ public class User {
 
     public String getPassword() {
         return password;
+    }
+
+    public UserRole getRole() {
+        return role;
     }
 
     // 비밀번호 변경 기능

