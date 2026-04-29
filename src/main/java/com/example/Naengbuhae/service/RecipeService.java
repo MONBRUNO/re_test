@@ -78,4 +78,11 @@ public class RecipeService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다. id=" + id));
         recipeRepository.delete(recipe);
     }
+
+    // 6. 관리자용 전체 레시피 조회
+    public List<RecipeResponseDto> getAllRecipesByAdmin() {
+        return recipeRepository.findAll().stream()
+                .map(RecipeResponseDto::new)
+                .collect(Collectors.toList());
+    }
 }

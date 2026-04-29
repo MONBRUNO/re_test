@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.dto.RecipeResponseDto;
 import com.example.Naengbuhae.service.RecipeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,12 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponseDto> getAllUsers() {
         return userService.getAllUsers();
+    }
+
+    @GetMapping("/recipes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<RecipeResponseDto> getAllRecipes() {
+        return recipeService.getAllRecipesByAdmin();
     }
 
     @DeleteMapping("/recipes/{recipeId}")
