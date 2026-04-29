@@ -85,4 +85,8 @@ public class RecipeService {
                 .map(RecipeResponseDto::new)
                 .collect(Collectors.toList());
     }
+
+    public long countRecipes() {
+        return recipeRepository.count();
+    }
 }

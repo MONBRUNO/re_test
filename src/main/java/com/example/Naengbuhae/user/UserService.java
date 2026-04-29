@@ -73,6 +73,10 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public long countUsers() {
+        return userRepository.count();
+    }
+
     // 강력한 비밀번호 검증 규칙 (영문 소문자, 숫자, 특수문자 포함 8자 이상)
     private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$";
 

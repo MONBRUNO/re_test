@@ -1,6 +1,8 @@
 package com.example.Naengbuhae.user;
 
 import com.example.Naengbuhae.dto.RecipeResponseDto;
+import com.example.Naengbuhae.dto.SystemStatsResponseDto;
+import com.example.Naengbuhae.service.IngredientService;
 import com.example.Naengbuhae.service.RecipeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +17,7 @@ public class AdminController {
 
     private final UserService userService;
     private final RecipeService recipeService;
+    private final IngredientService ingredientService;
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
@@ -33,5 +36,15 @@ public class AdminController {
     public String deleteRecipeByAdmin(@PathVariable Long recipeId) {
         recipeService.deleteRecipeByAdmin(recipeId);
         return recipeId + "번 레시피가 관리자에 의해 강제 삭제되었습니다. (부적절한 콘텐츠)";
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public SystemStatsResponseDto getSystemStats() {
+        return new SystemStatsResponseDto(
+                userService.countUsers(),
+                recipeService.countRecipes(),
+                ingredientService.countIngredients()
+        );
     }
 }

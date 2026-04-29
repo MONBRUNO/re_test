@@ -69,4 +69,8 @@ public class IngredientService {
 
         return ingredient.getId();
     }
+
+    public long countIngredients() {
+        return ingredientRepository.count();
+    }
 }
