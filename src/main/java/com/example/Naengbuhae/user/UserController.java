@@ -2,6 +2,7 @@ package com.example.Naengbuhae.user;
 
 import lombok.RequiredArgsConstructor;
 import com.example.Naengbuhae.config.JwtUtil;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,7 +14,8 @@ public class UserController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/signup")
-    public ApiResponse signup(@RequestBody SignupRequest request) {
+    // @Valid 어노테이션 추가로 SignupRequest DTO의 제약조건 발동
+    public ApiResponse signup(@Valid @RequestBody SignupRequest request) {
 
         String result = userService.signup(request);
 

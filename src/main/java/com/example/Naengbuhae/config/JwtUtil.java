@@ -19,7 +19,8 @@ public class JwtUtil {
 
     @Value("${JWT_SECRET_KEY}")
     private String SECRET_KEY;
-    private final long EXPIRATION = 1000 * 60 * 60;
+    // 기존: private final long EXPIRATION = 1000 * 60 * 60; (1시간)
+    private final long EXPIRATION = 1000 * 60 * 30; // 30분으로 단축!
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
