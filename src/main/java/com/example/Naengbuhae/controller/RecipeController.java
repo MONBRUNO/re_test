@@ -3,6 +3,7 @@ package com.example.Naengbuhae.controller;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
 import com.example.Naengbuhae.service.RecipeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ public class RecipeController {
 
     // POST: 레시피 등록 (로그인한 사용자와 연결)
     @PostMapping
-    public Long create(@RequestBody RecipeRequestDto requestDto, Principal principal) {
+    public Long create(@Valid @RequestBody RecipeRequestDto requestDto, Principal principal) {
         return recipeService.saveRecipe(requestDto, principal.getName());
     }
 
@@ -30,7 +31,7 @@ public class RecipeController {
 
     // PUT: 레시피 수정 (주인만 가능)
     @PutMapping("/{id}")
-    public Long update(@PathVariable Long id, @RequestBody RecipeRequestDto requestDto, Principal principal) {
+    public Long update(@PathVariable Long id, @Valid @RequestBody RecipeRequestDto requestDto, Principal principal) {
         return recipeService.updateRecipe(id, requestDto, principal.getName());
     }
 
