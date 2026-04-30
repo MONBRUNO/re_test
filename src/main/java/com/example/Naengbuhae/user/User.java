@@ -30,6 +30,7 @@ public class User {
 
     private LocalDate birthDate;
 
+    @Column(unique = true, nullable = false)
     private String email;
 
     private String activityLevel;
@@ -47,8 +48,8 @@ public class User {
     }
 
     // 회원가입용 생성자
-    public User(String username, String encodedPassword, UserRole role, String name, String gender, 
-                Double height, Double weight, LocalDate birthDate, String email, 
+    public User(String username, String encodedPassword, UserRole role, String name, String gender,
+                Double height, Double weight, LocalDate birthDate, String email,
                 String activityLevel, String dietGoal, String allergies) {
         this.username = username;
         this.password = encodedPassword;

@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.user;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
@@ -11,9 +12,12 @@ public class SignupRequest {
     private String password;
     private String name;
     private String gender;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate birthDate;
+
     private Double height;
     private Double weight;
-    private LocalDate birthDate;
     private String email;
     private String activityLevel;
     private String dietGoal;

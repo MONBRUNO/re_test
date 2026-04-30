@@ -66,6 +66,10 @@ public class IngredientService {
         ingredient.setName(requestDto.getName());
         ingredient.setQuantity(requestDto.getQuantity());
         ingredient.setExpirationDate(requestDto.getExpirationDate());
+        ingredient.setCategory(requestDto.getCategory());
+        ingredient.setUnit(requestDto.getUnit());
+        ingredient.setStorage(requestDto.getStorage());
+        ingredient.setPurchaseDate(requestDto.getPurchaseDate());
 
         return ingredient.getId();
     }
