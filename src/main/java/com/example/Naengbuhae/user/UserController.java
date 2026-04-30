@@ -15,7 +15,7 @@ public class UserController {
     @PostMapping("/signup")
     public ApiResponse signup(@RequestBody SignupRequest request) {
 
-        String result = userService.signup(request.getUsername(), request.getPassword());
+        String result = userService.signup(request);
 
         if (result.equals("회원가입 성공")) {
             return new ApiResponse(true, result);
