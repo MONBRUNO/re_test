@@ -1,56 +1,3 @@
-/*
-package com.example.Naengbuhae.user;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-@Service
-@RequiredArgsConstructor
-public class UserService {
-
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-
-    public String signup(String username, String password) {
-        if (username == null || username.trim().isEmpty()) {
-            return "아이디를 입력해주세요.";
-        }
-
-        if (password == null || password.trim().isEmpty()) {
-            return "비밀번호를 입력해주세요.";
-        }
-
-        if (userRepository.findByUsername(username).isPresent()) {
-            return "이미 존재하는 아이디입니다.";
-        }
-
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-
-        userRepository.save(user);
-        return "회원가입 성공";
-    }
-
-    public User login(String username, String password) {
-        if (username == null || username.trim().isEmpty()) {
-            return null;
-        }
-
-        if (password == null || password.trim().isEmpty()) {
-            return null;
-        }
-
-        return userRepository.findByUsername(username)
-                .filter(user -> passwordEncoder.matches(password, user.getPassword()))
-                .orElse(null);
-    }
-}
-
- */
-
-
 package com.example.Naengbuhae.user;
 
 import lombok.RequiredArgsConstructor;
@@ -80,7 +27,10 @@ public class UserService {
     // 강력한 비밀번호 검증 규칙 (영문 소문자, 숫자, 특수문자 포함 8자 이상)
     private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$";
 
-    public String signup(String username, String password) {
+    public String signup(SignupRequest request) {
+        String username = request.getUsername();
+        String password = request.getPassword();
+
         if (username == null || username.trim().isEmpty()) {
             return "아이디를 입력해주세요.";
         }
@@ -96,17 +46,30 @@ public class UserService {
         if (!password.matches(PASSWORD_REGEX)) {
             return "비밀번호는 8자 이상이며, 영어 소문자, 숫자, 특수문자를 포함해야 합니다.";
         }
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            return "이름을 입력해주세요.";
+        }
 
         // 비밀번호 암호화 후 엔티티 생성
         String encodedPassword = passwordEncoder.encode(password);
         
-        // 권한 결정 (관리자 백도어 로직)
+        // 권한 결정 (모든 신규 가입자는 USER 권한을 가짐)
         UserRole role = UserRole.USER;
-        if (username.equals("admin")) {
-            role = UserRole.ADMIN;
-        }
 
-        User user = new User(username, encodedPassword, role);
+        User user = new User(
+            username, 
+            encodedPassword, 
+            role,
+            request.getName(),
+            request.getGender(),
+            request.getHeight(),
+            request.getWeight(),
+            request.getBirthDate(),
+            request.getEmail(),
+            request.getActivityLevel(),
+            request.getDietGoal(),
+            request.getAllergies()
+        );
 
         userRepository.save(user);
         return "회원가입 성공";
