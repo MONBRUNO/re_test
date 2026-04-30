@@ -81,7 +81,7 @@ public class RecipeService {
 
     // 6. 관리자용 전체 레시피 조회
     public List<RecipeResponseDto> getAllRecipesByAdmin() {
-        return recipeRepository.findAll().stream()
+        return recipeRepository.findAllWithUser().stream()
                 .map(RecipeResponseDto::new)
                 .collect(Collectors.toList());
     }
