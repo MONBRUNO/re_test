@@ -2,6 +2,7 @@ package com.example.Naengbuhae.user;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter; // ✅ 롬복 Setter 임포트 추가!
 import java.time.LocalDate;
 
 @Entity
@@ -43,6 +44,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
+
+    // ✅ 길었던 메서드 대신 롬복 어노테이션 딱 하나로 깔끔하게!
+    @Setter
+    private Integer recommendedCalories; // 하루 권장 칼로리 저장용
 
     protected User() {
     }
