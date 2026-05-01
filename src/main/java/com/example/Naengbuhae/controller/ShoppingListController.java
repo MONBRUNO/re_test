@@ -41,4 +41,10 @@ public class ShoppingListController {
         shoppingItemService.deleteShoppingItem(id, principal.getName());
         return id + "번 장보기 항목이 삭제되었습니다.";
     }
+
+    // ✨ 추가: 체크 완료된 항목 냉장고로 옮기기 (버튼 클릭용)
+    @PostMapping("/move-to-fridge")
+    public String moveToFridge(Principal principal) {
+        return shoppingItemService.moveCheckedItemsToFridge(principal.getName());
+    }
 }
