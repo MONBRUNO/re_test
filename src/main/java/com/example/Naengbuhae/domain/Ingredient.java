@@ -23,7 +23,8 @@ public class Ingredient {
     @Column(nullable = false)
     private String name; // 식재료 이름 (예: 계란)
 
-    private Integer quantity; // 수량 (예: 10)
+    // 기존: private Integer quantity;
+    private Double quantity; // 수량 (소수점 가능, 예: 1.5)
 
     private LocalDate expirationDate; // 유통기한 (예: 2026-04-15)
 
@@ -39,7 +40,7 @@ public class Ingredient {
     @Column(nullable = false)
     private LocalDate purchaseDate; // 구매일 (예: 2026-04-15)
 
-    public Ingredient(User user, String name, Integer quantity, LocalDate expirationDate,
+    public Ingredient(User user, String name, Double quantity, LocalDate expirationDate,
                       String category, String unit, String storage, LocalDate purchaseDate) {
         this.user = user;
         this.name = name;

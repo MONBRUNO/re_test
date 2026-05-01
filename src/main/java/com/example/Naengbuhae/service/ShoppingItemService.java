@@ -92,21 +92,22 @@ public class ShoppingItemService {
         }
 
         // 3. 장바구니 항목(ShoppingItem)을 냉장고 식재료(Ingredient)로 변환!
+        // moveCheckedItemsToFridge 메서드 내부 수정
         List<Ingredient> ingredientsToSave = purchasedItems.stream().map(item -> {
-            // 소수점 수량(Double)을 정수(Integer)로 변환 (예: 1.5단 -> 1단으로 버림/변환)
-            int intQuantity = item.getQuantity() != null ? item.getQuantity().intValue() : 1;
-            // 단위가 없으면 기본값 "개" 할당
+            // ✨ 수정: 소수점 버리지 않고 그대로 가져오기! (null 방어 포함)
+            Double finalQuantity = item.getQuantity() != null ? item.getQuantity() : 1.0;
+
             String unit = (item.getUnit() != null && !item.getUnit().isBlank()) ? item.getUnit() : "개";
 
             return new Ingredient(
                     user,
                     item.getName(),
-                    intQuantity,
-                    LocalDate.now().plusDays(7), // 유통기한 기본값: 오늘 + 7일
-                    "미분류",                      // 카테고리 기본값
+                    finalQuantity, // Integer 대신 Double 값 삽입
+                    LocalDate.now().plusDays(7),
+                    "미분류",
                     unit,
-                    "냉장",                        // 보관 방법 기본값 (냉장/냉동/실온 중 택 1)
-                    LocalDate.now()              // 구매일: 마법을 실행한 오늘!
+                    "냉장",
+                    LocalDate.now()
             );
         }).collect(Collectors.toList());
         // 4. 변환된 식재료들을 내 냉장고 DB에 한 방에 쾅! 저장

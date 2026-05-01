@@ -8,7 +8,8 @@ import java.time.LocalDate;
 public class IngredientResponseDto {
     private Long id;
     private String name;
-    private Integer quantity;
+    // 기존: private Integer quantity;
+    private Double quantity;
     private LocalDate expirationDate;
     private String category;
     private String unit;

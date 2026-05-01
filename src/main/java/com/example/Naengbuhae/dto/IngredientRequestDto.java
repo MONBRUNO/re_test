@@ -17,10 +17,12 @@ public class IngredientRequestDto {
 
     @NotBlank(message = "식재료 이름은 필수입니다!")
     private String name;
-
+    
+    // 기존: @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다!")
+    // 기존: private Integer quantity;
     @NotNull(message = "수량은 필수 입력값입니다!")
-    @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다!")
-    private Integer quantity;
+    @Positive(message = "수량은 0보다 커야 합니다!") // 0.5도 허용하기 위해 @Positive 사용
+    private Double quantity;
 
     @NotNull(message = "유통기한은 필수 입력값입니다!")
     @FutureOrPresent(message = "유통기한은 오늘 또는 미래의 날짜여야 합니다!")
