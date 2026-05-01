@@ -20,7 +20,8 @@ public class SignupRequest {
     @NotBlank(message = "이름을 입력해주세요.")
     private String name;
 
-    @NotBlank(message = "성별을 선택해주세요.")
+    @NotBlank(message = "성별은 필수 입력값입니다.")
+    @Pattern(regexp = "^(남|여)$", message = "성별은 '남' 또는 '여'만 입력 가능합니다.")
     private String gender;
 
     @NotNull(message = "생년월일을 입력해주세요.")
@@ -39,10 +40,14 @@ public class SignupRequest {
     @Email(message = "올바른 이메일 형식이 아닙니다.")
     private String email;
 
-    @NotBlank(message = "활동량을 선택해주세요.")
+    @NotBlank(message = "활동량은 필수 입력값입니다.")
+    @Pattern(regexp = "^(거의 움직임 없음|가벼운 활동|보통 활동|많은 활동|매우 많은 활동)$",
+            message = "활동량은 지정된 한글 양식으로만 입력 가능합니다.")
     private String activityLevel;
 
-    @NotBlank(message = "식단 목표를 선택해주세요.")
+    @NotBlank(message = "식단 목표는 필수 입력값입니다.")
+    @Pattern(regexp = "^(체중 감량|체중 유지|근육량 증가|건강 관리)$",
+            message = "식단 목표는 지정된 한글 양식으로만 입력 가능합니다.")
     private String dietGoal;
 
     private String allergies;
