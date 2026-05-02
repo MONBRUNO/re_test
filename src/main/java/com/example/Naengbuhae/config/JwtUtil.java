@@ -14,13 +14,13 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // 토큰 내 권한 정보의 KEY 값
     public static final String AUTHORIZATION_KEY = "auth";
 
-    @Value("${JWT_SECRET_KEY}")
+    // 💡 수정 1: 환경변수 누락 시 서버가 터지지 않도록 임시 기본값(최소 32자 이상) 빵빵하게 추가!
+    @Value("${JWT_SECRET_KEY:default_secret_key_for_local_development_at_least_32_chars_long!}")
     private String SECRET_KEY;
-    // 기존: private final long EXPIRATION = 1000 * 60 * 60; (1시간)
-    private final long EXPIRATION = 1000 * 60 * 30; // 30분으로 단축!
+
+    private final long EXPIRATION = 1000 * 60 * 30; // 30분 유지
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
@@ -29,7 +29,7 @@ public class JwtUtil {
     public String createToken(String username, UserRole role) {
         return Jwts.builder()
                 .subject(username)
-                .claim(AUTHORIZATION_KEY, role) // 권한 정보 추가
+                .claim(AUTHORIZATION_KEY, role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(getKey())
@@ -41,10 +41,22 @@ public class JwtUtil {
         return claims.getSubject();
     }
 
+    // 💡 수정 2: 토큰 까보다가 에러 나도 서버 안 죽게 방어적 프로그래밍 적용!
     public UserRole getRoleFromToken(String token) {
         Claims claims = getClaims(token);
-        String role = claims.get(AUTHORIZATION_KEY, String.class);
-        return UserRole.valueOf(role);
+        Object roleObj = claims.get(AUTHORIZATION_KEY);
+
+        // 권한 정보가 없으면 기본 USER 권한 부여
+        if (roleObj == null) {
+            return UserRole.USER;
+        }
+
+        try {
+            return UserRole.valueOf(roleObj.toString());
+        } catch (IllegalArgumentException e) {
+            // "SUPERMAN" 같은 이상한 권한이 들어와도 죽지 않고 USER로 강제 강등!
+            return UserRole.USER;
+        }
     }
 
     private Claims getClaims(String token) {
