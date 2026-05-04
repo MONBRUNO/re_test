@@ -76,7 +76,8 @@ public class SecurityConfig {
                 .filter(s -> !s.isEmpty()) // 빈 값은 쿨하게 버리기
                 .toList();
 
-        configuration.setAllowedOrigins(origins);
+        // 패턴 매칭 지원 (예: http://localhost:* — vite가 5173/5174/5175 어디로 뜨든 통과)
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

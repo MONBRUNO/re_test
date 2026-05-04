@@ -61,7 +61,7 @@ public class RecipeSeeder {
                 randomPassword,
                 UserRole.ADMIN,
                 "냉부해 시스템",
-                "남",
+                "남성",
                 170.0,
                 60.0,
                 LocalDate.of(2000, 1, 1),
