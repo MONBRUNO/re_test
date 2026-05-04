@@ -881,7 +881,111 @@ public class SwaggerConfig {
 }
 ```
 
+---
 
+## 🆕 이번 작업 정리 (프론트 스펙 정렬 + 신규 기능)
 
+### 1) 레시피 ↔ 식재료 연결 + 매칭 추천 API
 
+**무엇을 했나**
+- 레시피마다 필요한 재료 목록을 등록할 수 있게 `RecipeIngredient` 엔티티 추가 (재료명, 필요 수량, 단위, **필수 여부**)
+- 프론트 스펙에 맞춰 `Recipe` 엔티티를 전면 확장: `name`(기존 title), `category`, `difficulty`(easy/medium/hard), `servings`, `imageUrl`, `steps`(List), `nutrition`(@Embeddable: calories/protein/carbs/fat/sodium)
+- 추천 API 신규: 내 냉장고 재료로 매칭률을 계산해 모든 레시피를 매칭률 내림차순으로 반환
+
+**API**
+```
+GET /api/recipes/recommendations
+응답: [{ recipe, matchRate, hasIngredients[], missingIngredients[] }, ...]
+```
+
+**매칭 규칙** (프론트 `matchRecipesWithIngredients`와 동일)
+- 필수 재료(`required=true`)가 모두 있으면 → matchRate = 보유 / 전체 × 100
+- 필수 재료가 하나라도 빠지면 → matchRate = 0
+- 유통기한 지난 재료는 보유로 인정 안 함
+- 재료명은 부분 매칭(양쪽 includes), 대소문자/공백 무시
+
+**신규/수정 파일**
+- 신규: `domain/RecipeIngredient.java`, `domain/Difficulty.java`, `domain/Nutrition.java`, `dto/RecipeIngredientDto.java`, `dto/NutritionDto.java`, `dto/RecipeMatchResponseDto.java`
+- 수정: `domain/Recipe.java`, `dto/RecipeRequestDto.java`, `dto/RecipeResponseDto.java`, `repository/RecipeRepository.java`, `service/RecipeService.java`, `controller/RecipeController.java`
+
+### 2) 내 프로필 조회/수정 API (`/user/me`)
+
+**문제**: 프론트 `MyCustom` 페이지가 `localStorage.getItem('userProfile')`에서 데이터를 읽고 있어서, 다른 기기에서 로그인하면 빈 화면이 나옴. 백엔드 `/user/me`는 username만 echo back하던 상태.
+
+**해결**
+- `GET /user/me` → 로그인 사용자의 전체 프로필을 `UserResponseDto`로 반환
+- `PUT /user/me` → 신체 정보 수정 + **권장 칼로리 자동 재계산** (Mifflin-St Jeor)
+- `UserResponseDto`에 `recommendedCalories` 필드 추가
+
+**API**
+```
+GET /user/me
+응답: { id, username, name, gender, height, weight, birthDate, email,
+        activityLevel, dietGoal, allergies, role, recommendedCalories }
+
+PUT /user/me
+요청: { name, gender, birthDate, height, weight,
+        activityLevel, dietGoal, allergies }
+응답: 업데이트된 UserResponseDto (재계산된 recommendedCalories 포함)
+```
+
+**신규/수정 파일**
+- 신규: `user/ProfileUpdateRequest.java`
+- 수정: `user/User.java`(updateProfile 메서드), `user/UserService.java`, `user/UserController.java`, `user/UserResponseDto.java`
+
+### 3) 유통기한 임박 식재료 API
+
+**API**
+```
+GET /api/ingredients/expiring?days=3   (기본 3일)
+응답: [{ id, name, quantity, unit, category, storage,
+         expirationDate, purchaseDate, daysLeft, status }, ...]
+```
+`status` 분류 (프론트 `getExpiryStatus`와 동일):
+- `danger` : `daysLeft <= 0` (오늘 만료 + 이미 만료)
+- `warning` : 1~3일 남음
+- `safe` : 4일 이상
+
+만료 임박순으로 자동 정렬됨.
+
+**신규/수정 파일**
+- 신규: `dto/ExpiringIngredientResponseDto.java`
+- 수정: `service/IngredientService.java`, `controller/IngredientController.java`
+
+### 4) 기본 레시피 시드 (8개 자동 등록)
+
+**무엇을 했나**: 부팅 시 `recipe` 테이블이 비어있으면 프론트의 8개 하드코딩 레시피(`recipes.ts`)를 자동 등록. 소유자는 `system` 사용자(없으면 자동 생성, 비번은 추측 불가능한 UUID, 권한은 ADMIN).
+
+**중복 방지**: 테이블이 비어있을 때만 시드 → 재부팅해도 중복 안 들어감.
+
+**신규 파일**
+- `config/RecipeSeeder.java`
+
+---
+
+## ⚠️ 부팅 전 필수 작업 — DB 마이그레이션
+
+`spring.jpa.hibernate.ddl-auto=update`는 **컬럼 추가만** 자동이고 **이름 변경/제거는 안 됩니다**.
+이번에 `recipe.title → name`, `instructions → steps`(별도 테이블) 등 구조가 바뀌어서 기존 테이블을 비워야 새 스키마가 정상 적용됩니다.
+
+**Supabase SQL Editor에서 실행:**
+```sql
+DROP TABLE IF EXISTS recipe_ingredient CASCADE;
+DROP TABLE IF EXISTS recipe_steps CASCADE;
+DROP TABLE IF EXISTS recipe CASCADE;
+```
+재부팅하면 새 스키마가 자동 생성되고 시드 8개 레시피가 들어갑니다.
+
+> 기존 레시피 데이터는 다 사라집니다. 어차피 컬럼 구조가 호환되지 않아 보존이 의미 없는 상태입니다.
+
+---
+
+## 📋 추가/변경된 엔드포인트 요약
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/recipes/recommendations` | 매칭률 기반 레시피 추천 |
+| GET | `/api/ingredients/expiring?days=N` | 유통기한 N일 이내 임박 식재료 |
+| GET | `/user/me` | 내 프로필 전체 조회 (응답 형식 변경) |
+| PUT | `/user/me` | 내 프로필 수정 + 권장 칼로리 재계산 |
 

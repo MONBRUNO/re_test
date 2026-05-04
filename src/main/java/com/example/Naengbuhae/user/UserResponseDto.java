@@ -17,6 +17,7 @@ public class UserResponseDto {
     private String dietGoal;
     private String allergies;
     private UserRole role;
+    private Integer recommendedCalories;
 
     public UserResponseDto(User user) {
         this.id = user.getId();
@@ -31,5 +32,6 @@ public class UserResponseDto {
         this.dietGoal = user.getDietGoal();
         this.allergies = user.getAllergies();
         this.role = user.getRole();
+        this.recommendedCalories = user.getRecommendedCalories();
     }
 }

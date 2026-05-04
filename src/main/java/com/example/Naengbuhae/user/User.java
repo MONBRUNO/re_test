@@ -74,4 +74,18 @@ public class User {
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    // 프로필 수정 (username/email/password/role은 변경 불가)
+    public void updateProfile(String name, String gender, Double height, Double weight,
+                              LocalDate birthDate, String activityLevel, String dietGoal,
+                              String allergies) {
+        this.name = name;
+        this.gender = gender;
+        this.height = height;
+        this.weight = weight;
+        this.birthDate = birthDate;
+        this.activityLevel = activityLevel;
+        this.dietGoal = dietGoal;
+        this.allergies = allergies;
+    }
 }

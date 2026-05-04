@@ -5,6 +5,8 @@ import com.example.Naengbuhae.config.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/user")
@@ -39,20 +41,17 @@ public class UserController {
         return new LoginResponse(true, "로그인 성공", token);
     }
 
+    // 현재 로그인한 사용자의 전체 프로필 조회
+    // SecurityFilter가 이미 토큰 검증 + Principal 주입을 처리하므로 직접 파싱 불필요
     @GetMapping("/me")
-    public ApiResponse me(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public UserResponseDto me(Principal principal) {
+        return userService.getMyProfile(principal.getName());
+    }
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return new ApiResponse(false, "토큰이 없습니다.");
-        }
-
-        String token = authHeader.substring(7);
-
-        if (!jwtUtil.validateToken(token)) {
-            return new ApiResponse(false, "유효하지 않은 토큰입니다.");
-        }
-
-        String username = jwtUtil.getUsernameFromToken(token);
-        return new ApiResponse(true, "인증된 사용자: " + username);
+    // 프로필 수정 (신체정보 변경 시 권장 칼로리 자동 재계산)
+    @PutMapping("/me")
+    public UserResponseDto updateMe(@Valid @RequestBody ProfileUpdateRequest request,
+                                    Principal principal) {
+        return userService.updateMyProfile(principal.getName(), request);
     }
 }

@@ -1,8 +1,13 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.Recipe;
+import com.example.Naengbuhae.domain.RecipeIngredient;
+import com.example.Naengbuhae.dto.RecipeIngredientDto;
+import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
+import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
@@ -10,7 +15,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,50 +30,62 @@ public class RecipeService {
 
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final IngredientRepository ingredientRepository;
 
-    // 1. 레시피 저장 (사용자 연결)
+    // 1. 레시피 저장 (새 필드 + 재료 목록)
     @Transactional
     public Long saveRecipe(RecipeRequestDto requestDto, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
-        return recipeRepository.save(requestDto.toEntity(user)).getId();
+
+        Recipe recipe = requestDto.toEntity(user);
+        applyIngredients(recipe, requestDto.getIngredients());
+
+        return recipeRepository.save(recipe).getId();
     }
 
-    // 2. 레시피 전체 조회 (로그인한 유저의 것만)
+    // 2. 내 레시피 전체 조회
     public List<RecipeResponseDto> findAllRecipes(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
-        
+
         return recipeRepository.findByUser(user).stream()
                 .map(RecipeResponseDto::new)
                 .collect(Collectors.toList());
     }
 
-    // 3. 레시피 수정 (권한 체크 포함)
+    // 3. 레시피 수정 (권한 체크 + 모든 필드 갱신)
     @Transactional
     public Long updateRecipe(Long id, RecipeRequestDto requestDto, String username) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다. id=" + id));
 
-        // 주인이 맞는지 확인!
         if (!recipe.getUser().getUsername().equals(username)) {
             throw new IllegalArgumentException("본인의 레시피만 수정할 수 있습니다.");
         }
 
-        recipe.setTitle(requestDto.getTitle());
-        recipe.setInstructions(requestDto.getInstructions());
+        recipe.setName(requestDto.getName());
+        recipe.setCategory(requestDto.getCategory());
+        recipe.setDifficulty(requestDto.getDifficulty());
         recipe.setCookingTime(requestDto.getCookingTime());
+        recipe.setServings(requestDto.getServings());
+        recipe.setImageUrl(requestDto.getImageUrl());
+        recipe.setSteps(requestDto.getSteps() != null ? new ArrayList<>(requestDto.getSteps()) : new ArrayList<>());
+        recipe.setNutrition(requestDto.getNutrition() != null ? requestDto.getNutrition().toEntity() : null);
+
+        // 재료 목록 통째 갱신: orphanRemoval이 자동 삭제
+        recipe.getIngredients().clear();
+        applyIngredients(recipe, requestDto.getIngredients());
 
         return recipe.getId();
     }
 
-    // 4. 레시피 삭제 (권한 체크 포함)
+    // 4. 레시피 삭제
     @Transactional
     public void deleteRecipe(Long id, String username) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다. id=" + id));
 
-        // 주인이 맞는지 확인!
         if (!recipe.getUser().getUsername().equals(username)) {
             throw new IllegalArgumentException("본인의 레시피만 삭제할 수 있습니다.");
         }
@@ -71,7 +93,7 @@ public class RecipeService {
         recipeRepository.delete(recipe);
     }
 
-    // 5. 관리자용 레시피 강제 삭제 (권한 체크 없음 - 컨트롤러에서 ADMIN 체크함)
+    // 5. 관리자용 레시피 강제 삭제
     @Transactional
     public void deleteRecipeByAdmin(Long id) {
         Recipe recipe = recipeRepository.findById(id)
@@ -88,5 +110,75 @@ public class RecipeService {
 
     public long countRecipes() {
         return recipeRepository.count();
+    }
+
+    // 7. 추천 (매칭률 기반) — 프론트의 matchRecipesWithIngredients와 동일한 로직
+    //   - 모든 시스템 레시피 대상 (필터링 X)
+    //   - 매칭률 = 보유 재료 수 / 전체 재료 수 * 100
+    //   - 단, 필수재료(required=true)가 하나라도 빠지면 매칭률 0
+    //   - 만료된 재료는 보유로 인정하지 않음
+    //   - 매칭률 내림차순 정렬
+    public List<RecipeMatchResponseDto> recommendRecipes(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
+
+        LocalDate today = LocalDate.now();
+        Set<String> myIngredientNames = ingredientRepository.findByUser(user).stream()
+                .filter(ing -> ing.getExpirationDate() == null || !ing.getExpirationDate().isBefore(today))
+                .map(Ingredient::getName)
+                .map(this::normalizeName)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        return recipeRepository.findAllWithUserAndIngredients().stream()
+                .map(recipe -> buildMatch(recipe, myIngredientNames))
+                .sorted(Comparator.comparingInt(RecipeMatchResponseDto::getMatchRate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    // ===== 내부 헬퍼 =====
+
+    private void applyIngredients(Recipe recipe, List<RecipeIngredientDto> ingredientDtos) {
+        if (ingredientDtos == null) return;
+        for (RecipeIngredientDto dto : ingredientDtos) {
+            recipe.addIngredient(new RecipeIngredient(
+                    recipe, dto.getName(), dto.getQuantity(), dto.getUnit(), dto.isRequired()
+            ));
+        }
+    }
+
+    private RecipeMatchResponseDto buildMatch(Recipe recipe, Set<String> myIngredientNames) {
+        List<String> has = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+        boolean hasAllRequired = true;
+
+        for (RecipeIngredient ri : recipe.getIngredients()) {
+            if (containsByPartialMatch(myIngredientNames, ri.getName())) {
+                has.add(ri.getName());
+            } else {
+                missing.add(ri.getName());
+                if (ri.isRequired()) hasAllRequired = false;
+            }
+        }
+
+        int total = recipe.getIngredients().size();
+        int matchRate = 0;
+        if (hasAllRequired && total > 0) {
+            matchRate = (int) Math.round((has.size() * 100.0) / total);
+        }
+
+        return new RecipeMatchResponseDto(new RecipeResponseDto(recipe), matchRate, has, missing);
+    }
+
+    // 프론트와 동일한 부분 매칭 (서로 includes — 양쪽 어느 쪽이든 포함하면 매치)
+    private boolean containsByPartialMatch(Set<String> myNames, String recipeIngName) {
+        String target = normalizeName(recipeIngName);
+        for (String mine : myNames) {
+            if (mine.contains(target) || target.contains(mine)) return true;
+        }
+        return false;
+    }
+
+    private String normalizeName(String name) {
+        return name == null ? "" : name.trim().toLowerCase();
     }
 }

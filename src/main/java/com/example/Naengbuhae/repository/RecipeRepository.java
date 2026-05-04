@@ -16,4 +16,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     // [최적화] 레시피와 유저를 한 방에 가져오는 조인 페치! (N+1 방지)
     @Query("SELECT r FROM Recipe r JOIN FETCH r.user")
     List<Recipe> findAllWithUser();
+
+    // [추천용] 모든 레시피 + 작성자 + 재료까지 한 번에 가져오기
+    // distinct로 컬렉션 join 시 중복 제거
+    @Query("SELECT DISTINCT r FROM Recipe r JOIN FETCH r.user LEFT JOIN FETCH r.ingredients")
+    List<Recipe> findAllWithUserAndIngredients();
 }

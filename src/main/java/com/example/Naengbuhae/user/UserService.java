@@ -27,6 +27,44 @@ public class UserService {
         return userRepository.count();
     }
 
+    // 현재 로그인한 사용자의 프로필 조회 (프론트 MyCustom 페이지용)
+    public UserResponseDto getMyProfile(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        return new UserResponseDto(user);
+    }
+
+    // 프로필 수정 + 신체정보 기반 권장 칼로리 자동 재계산
+    @Transactional
+    public UserResponseDto updateMyProfile(String username, ProfileUpdateRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        user.updateProfile(
+                request.getName(),
+                request.getGender(),
+                request.getHeight(),
+                request.getWeight(),
+                request.getBirthDate(),
+                request.getActivityLevel(),
+                request.getDietGoal(),
+                request.getAllergies()
+        );
+
+        // 신체정보가 바뀔 가능성이 항상 있으므로 권장 칼로리 재계산
+        int recalculated = CalorieCalculator.calculateRecommendedCalories(
+                request.getGender(),
+                request.getBirthDate(),
+                request.getHeight(),
+                request.getWeight(),
+                request.getActivityLevel(),
+                request.getDietGoal()
+        );
+        user.setRecommendedCalories(recalculated);
+
+        return new UserResponseDto(user);
+    }
+
     private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$";
 
     @Transactional

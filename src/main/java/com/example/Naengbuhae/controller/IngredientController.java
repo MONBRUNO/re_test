@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.controller;
 
+import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.service.IngredientService;
@@ -27,6 +28,14 @@ public class IngredientController {
     @GetMapping
     public List<IngredientResponseDto> list(Principal principal) {
         return ingredientService.findAllIngredients(principal.getName());
+    }
+
+    // GET: 유통기한 임박 식재료 (만료된 것 + 향후 N일 이내 만료)
+    // 예: /api/ingredients/expiring?days=3 (기본 3일)
+    @GetMapping("/expiring")
+    public List<ExpiringIngredientResponseDto> expiring(@RequestParam(defaultValue = "3") int days,
+                                                        Principal principal) {
+        return ingredientService.findExpiring(principal.getName(), days);
     }
 
     // DELETE: 내 식재료만 삭제 가능하도록 수정

@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.controller;
 
+import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
 import com.example.Naengbuhae.service.RecipeService;
@@ -27,6 +28,12 @@ public class RecipeController {
     @GetMapping
     public List<RecipeResponseDto> list(Principal principal) {
         return recipeService.findAllRecipes(principal.getName());
+    }
+
+    // GET: 내 냉장고 재료 기반 레시피 매칭 (모든 레시피를 매칭률과 함께 반환)
+    @GetMapping("/recommendations")
+    public List<RecipeMatchResponseDto> recommend(Principal principal) {
+        return recipeService.recommendRecipes(principal.getName());
     }
 
     // PUT: 레시피 수정 (주인만 가능)
