@@ -24,13 +24,19 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173}")
+    @Value("${app.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
     private String allowedOrigins;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          CustomOAuth2UserService customOAuth2UserService,
+                          OAuth2SuccessHandler oAuth2SuccessHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
     }
 
     @Bean
@@ -56,10 +62,18 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/error"
+                                "/error",
+                                "/oauth2/**",         // OAuth 인증 시작 (예: /oauth2/authorization/kakao)
+                                "/login/oauth2/**"    // OAuth 콜백 (예: /login/oauth2/code/kakao)
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
+                )
+                // OAuth2 로그인 활성화 — 우리 CustomOAuth2UserService로 사용자 정보 처리,
+                // 성공 시 OAuth2SuccessHandler가 JWT 발급 + 프론트로 redirect
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -70,13 +84,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 💡 수정 3: 띄어쓰기 폭탄(?)을 막아주는 안전한 리스트 파싱 로직!
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)        // 앞뒤 공백 싹둑 자르기
-                .filter(s -> !s.isEmpty()) // 빈 값은 쿨하게 버리기
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
                 .toList();
 
-        // 패턴 매칭 지원 (예: http://localhost:* — vite가 5173/5174/5175 어디로 뜨든 통과)
         configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
