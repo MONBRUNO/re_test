@@ -12,7 +12,7 @@
 |---|---|
 | 언어 | Java 17 (Amazon Corretto) |
 | 프레임워크 | Spring Boot 3.2.4 |
-| 보안 | Spring Security · JWT (jjwt 0.12.5) · OAuth2 Client (카카오/구글/네이버) |
+| 보안 | Spring Security · JWT (jjwt 0.12.5) · OAuth2 Client (카카오) |
 | 데이터 | Spring Data JPA · Hibernate 6 · PostgreSQL (Supabase) |
 | 도구 | Lombok · Springdoc OpenAPI(Swagger) · Gradle |
 
@@ -22,10 +22,9 @@
 
 ### 1. 인증 / 회원
 - **일반 회원가입 / 로그인** — JWT 기반 세션리스 인증
-- **소셜 로그인** — Spring Security OAuth2 Client (카카오 / 구글 / 네이버 모두 지원)
+- **카카오 소셜 로그인** — Spring Security OAuth2 Client
   - 같은 이메일이면 기존 LOCAL 계정에 자동 연결 (B-1 정책)
-  - **카카오** 일반 앱이 이메일 권한을 못 받는 경우 `kakao_{providerId}@kakao.local` placeholder 자동 생성
-  - **네이버** 동의 항목에 따라 성별/생년월일까지 받아서 회원 정보 자동 prefill (사용자 입력 단계 단축)
+  - 카카오 일반 앱이 이메일 권한을 못 받는 경우 `kakao_{providerId}@kakao.local` placeholder 자동 생성
 - **프로필 조회·수정** (`/user/me`) — 신체정보 변경 시 권장 칼로리 자동 재계산
 - **회원가입 입력 검증** — 아이디 영문/숫자 조합, 비밀번호(영소문자+숫자+특수문자), 성별·활동량·식단목표 enum 정렬
 
@@ -61,8 +60,8 @@
 |---|---|---|---|
 | POST | `/user/signup` | 회원가입 | ❌ |
 | POST | `/user/login` | 로그인 (JWT 발급) | ❌ |
-| GET | `/oauth2/authorization/{kakao\|google\|naver}` | 소셜 로그인 시작 | ❌ |
-| GET | `/login/oauth2/code/{kakao\|google\|naver}` | 소셜 콜백 (자동, 프론트로 redirect with token) | ❌ |
+| GET | `/oauth2/authorization/kakao` | 카카오 OAuth 시작 | ❌ |
+| GET | `/login/oauth2/code/kakao` | 카카오 콜백 (자동, 프론트로 redirect with token) | ❌ |
 
 ### 유저
 | Method | Path | 설명 |
@@ -162,18 +161,9 @@ ALLOWED_ORIGINS=http://localhost:*,http://127.0.0.1:*
 # JWT 비밀키
 JWT_SECRET=충분히_긴_랜덤_문자열_64자_이상_권장
 
-# 카카오 OAuth (developers.kakao.com)
+# 카카오 OAuth (개발자 콘솔에서 발급)
 KAKAO_CLIENT_ID=발급받은_REST_API_키
 KAKAO_CLIENT_SECRET=발급받은_시크릿_코드
-
-# 구글 OAuth (console.cloud.google.com)
-GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-...
-
-# 네이버 OAuth (developers.naver.com)
-NAVER_CLIENT_ID=...
-NAVER_CLIENT_SECRET=...
-
 OAUTH2_FRONTEND_REDIRECT=http://localhost:5173/oauth/callback
 ```
 
@@ -194,11 +184,9 @@ OAUTH2_FRONTEND_REDIRECT=http://localhost:5173/oauth/callback
 
 ---
 
-## 📋 OAuth 제공자 설정
+## 📋 카카오 OAuth 설정 (개발자 콘솔)
 
-### 카카오 — https://developers.kakao.com/
-
-1. 앱 생성
+1. https://developers.kakao.com/ → 앱 생성
 2. **앱 → 플랫폼 키 → 카카오 로그인 리다이렉트 URI** 등록
    - `http://localhost:8080/login/oauth2/code/kakao`
 3. **앱 → 일반 → 웹 도메인** 등록 (`http://localhost:8080`)
@@ -206,29 +194,7 @@ OAUTH2_FRONTEND_REDIRECT=http://localhost:5173/oauth/callback
 5. **카카오 로그인 → 동의항목 → 닉네임 필수 동의**
    - (이메일은 비즈 앱 전환 전엔 권한 받을 수 없음 — placeholder로 자동 처리)
 6. **앱 → 고급 → 클라이언트 시크릿 → 코드 발급 + 활성화**
-7. REST API 키와 시크릿을 `.env`에 추가
-
-### 구글 — https://console.cloud.google.com/
-
-1. 프로젝트 생성 → **API 및 서비스 → Google 인증 플랫폼**에서 시작 마법사 진행 (앱 이름/사용자 이메일/외부 사용자 유형)
-2. 좌측 **클라이언트** → **+ 클라이언트 만들기** → 웹 애플리케이션
-   - 승인된 JavaScript 원본: `http://localhost:8080`, `http://localhost:5173`
-   - **승인된 리디렉션 URI**: `http://localhost:8080/login/oauth2/code/google`
-3. ⚠️ 생성 직후 표시되는 **클라이언트 보안 비밀번호는 한 번만 보임** — 즉시 복사 또는 JSON 다운로드
-4. 좌측 **대상** → 테스트 사용자에 본인 이메일 추가 (테스트 모드에서만 본인 외 차단됨)
-5. Client ID + Secret을 `.env`에 추가
-
-### 네이버 — https://developers.naver.com/
-
-1. 상단 **Application → 애플리케이션 등록**
-2. **사용 API: 네이버 로그인** 체크 → **제공 정보 선택**:
-   - ☑ 회원이름 / 이메일 / **성별** / **생일** / **출생연도**
-   - (성별·생일·출생연도까지 받아두면 서버가 자동으로 회원 정보에 prefill)
-3. **로그인 오픈 API 서비스 환경 → PC웹**:
-   - 서비스 URL: `http://localhost:8080`
-   - **Callback URL**: `http://localhost:8080/login/oauth2/code/naver`
-4. 등록 완료 후 앱 상세 페이지에서 Client ID / Secret 확인 (네이버는 언제든 다시 볼 수 있음)
-5. `.env`에 추가
+7. 발급된 REST API 키와 시크릿을 `.env`에 추가
 
 ---
 
@@ -254,6 +220,8 @@ ALTER TABLE users ALTER COLUMN provider SET NOT NULL;
 
 **커밋**: `0552a7d feat: 구글/네이버 OAuth 로그인 추가 + 네이버 prefill (성별·생년월일)`
 
+#### 코드 변경
+
 - **구글 OAuth 추가** (`application.properties`)
   - Spring Security 내장 provider 사용 → URL 자동 처리
   - `scope=profile,email` — 기본 프로필과 이메일만
@@ -267,11 +235,41 @@ ALTER TABLE users ALTER COLUMN provider SET NOT NULL;
   - `CustomOAuth2UserService.createNewUser()`에서 신규 사용자 저장 직후 prefill 호출
   - **결과**: 네이버 사용자는 이름/이메일/성별/생년월일 4개 항목이 자동 입력 → 사용자는 키/몸무게/활동량/식단 4개만 추가 입력
 
-**관련 변경**:
-- 위쪽 "OAuth 제공자 설정" 섹션에 구글/네이버 콘솔 가이드 추가
-- 환경 변수 예시에 `GOOGLE_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` 추가
+#### `.env`에 추가 필요한 환경 변수
 
-**다음 후보**: 모바일 앱 OAuth 흐름 (네이티브 SDK 연동 시 별도 클라이언트 ID 발급 필요)
+```dotenv
+# 구글 OAuth (console.cloud.google.com)
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+
+# 네이버 OAuth (developers.naver.com)
+NAVER_CLIENT_ID=...
+NAVER_CLIENT_SECRET=...
+```
+
+#### 구글 콘솔 설정 — https://console.cloud.google.com/
+
+1. 프로젝트 생성 → **API 및 서비스 → Google 인증 플랫폼**에서 시작 마법사 진행 (앱 이름/사용자 이메일/외부 사용자 유형)
+2. 좌측 **클라이언트** → **+ 클라이언트 만들기** → 웹 애플리케이션
+   - 승인된 JavaScript 원본: `http://localhost:8080`, `http://localhost:5173`
+   - **승인된 리디렉션 URI**: `http://localhost:8080/login/oauth2/code/google`
+3. ⚠️ 생성 직후 표시되는 **클라이언트 보안 비밀번호는 한 번만 보임** — 즉시 복사 또는 JSON 다운로드
+4. 좌측 **대상** → 테스트 사용자에 본인 이메일 추가 (테스트 모드에서만 본인 외 차단됨)
+
+#### 네이버 콘솔 설정 — https://developers.naver.com/
+
+1. 상단 **Application → 애플리케이션 등록**
+2. **사용 API: 네이버 로그인** 체크 → **제공 정보 선택**:
+   - ☑ 회원이름 / 이메일 / **성별** / **생일** / **출생연도**
+   - (성별·생일·출생연도까지 받아두면 서버가 자동으로 회원 정보에 prefill)
+3. **로그인 오픈 API 서비스 환경 → PC웹**:
+   - 서비스 URL: `http://localhost:8080`
+   - **Callback URL**: `http://localhost:8080/login/oauth2/code/naver`
+4. 등록 완료 후 앱 상세 페이지에서 Client ID / Secret 확인 (네이버는 언제든 다시 볼 수 있음)
+
+#### 다음 후보
+
+- 모바일 앱 OAuth 흐름 (네이티브 SDK 연동 시 별도 클라이언트 ID 발급 필요)
 
 ---
 
