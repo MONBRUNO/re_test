@@ -11,7 +11,8 @@ import java.time.LocalDate;
 public class SignupRequest {
 
     @NotBlank(message = "아이디를 입력해주세요.")
-    @Pattern(regexp = "^[a-zA-Z0-9]{6,}$", message = "아이디는 영문, 숫자 조합 6자 이상이어야 합니다.")
+    @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z0-9]{6,}$",
+             message = "아이디는 영문, 숫자 조합 6자 이상이어야 합니다.")
     private String username;
 
     @NotBlank(message = "비밀번호를 입력해주세요.")
@@ -21,7 +22,7 @@ public class SignupRequest {
     private String name;
 
     @NotBlank(message = "성별은 필수 입력값입니다.")
-    @Pattern(regexp = "^(남성|여성)$", message = "성별은 '남성' 또는 '여성'만 입력 가능합니다.")
+    @Pattern(regexp = "^(남|여)$", message = "성별은 '남' 또는 '여'만 입력 가능합니다.")
     private String gender;
 
     @NotNull(message = "생년월일을 입력해주세요.")

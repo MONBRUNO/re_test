@@ -17,7 +17,7 @@ public class CalorieCalculator {
 
         // 2. 기초 대사량 (BMR) 계산 - Mifflin-St Jeor 공식 적용
         double bmr;
-        if ("남성".equals(gender)) {
+        if ("남".equals(gender)) {
             bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
         } else {
             bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
