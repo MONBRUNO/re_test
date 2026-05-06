@@ -78,8 +78,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 info.getProvider(),
                 info.getProviderId()
         );
+        // 제공자가 알려준 성별/생년월일이 있으면 prefill (네이버는 동의 항목에 따라 제공)
+        user.prefillFromOAuth(info.getGender(), info.getBirthDate());
         userRepository.save(user);
-        log.info("[OAuth] 신규 사용자 가입: {} ({})", info.getEmail(), info.getProvider());
+        log.info("[OAuth] 신규 사용자 가입: {} ({}) — gender={}, birthDate={}",
+                info.getEmail(), info.getProvider(), info.getGender(), info.getBirthDate());
         return user;
     }
 

@@ -114,6 +114,17 @@ public class User {
         this.providerId = providerId;
     }
 
+    // OAuth 신규 가입 시 제공자가 알려준 부가 정보(성별/생년월일)를 prefill.
+    // 사용자가 직접 입력한 값이 있으면 덮어쓰지 않고, 비어있을 때만 채움.
+    public void prefillFromOAuth(String gender, LocalDate birthDate) {
+        if (gender != null && this.gender == null) {
+            this.gender = gender;
+        }
+        if (birthDate != null && this.birthDate == null) {
+            this.birthDate = birthDate;
+        }
+    }
+
     // OAuth 사용자가 추가 정보 입력을 끝냈는지 (필수 필드 다 차있는지)
     public boolean hasCompleteProfile() {
         return gender != null && height != null && weight != null
