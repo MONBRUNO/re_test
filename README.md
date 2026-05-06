@@ -1,5 +1,217 @@
 # Naengbuhae_Team_backend
 
+> 스마트 냉장고 / 식재료 관리 앱 **냉부해**의 백엔드 서버.
+> 사용자가 보유한 식재료를 기반으로 만들 수 있는 레시피를 추천하고,
+> 신체정보에 맞춘 일일 권장 칼로리·식단을 제안한다.
+
+---
+
+## 🛠 기술 스택
+
+| 영역 | 사용 기술 |
+|---|---|
+| 언어 | Java 17 (Amazon Corretto) |
+| 프레임워크 | Spring Boot 3.2.4 |
+| 보안 | Spring Security · JWT (jjwt 0.12.5) · OAuth2 Client (카카오) |
+| 데이터 | Spring Data JPA · Hibernate 6 · PostgreSQL (Supabase) |
+| 도구 | Lombok · Springdoc OpenAPI(Swagger) · Gradle |
+
+---
+
+## ✨ 주요 기능
+
+### 1. 인증 / 회원
+- **일반 회원가입 / 로그인** — JWT 기반 세션리스 인증
+- **카카오 소셜 로그인** — Spring Security OAuth2 Client
+  - 같은 이메일이면 기존 LOCAL 계정에 자동 연결 (B-1 정책)
+  - 카카오 일반 앱이 이메일 권한을 못 받는 경우 `kakao_{providerId}@kakao.local` placeholder 자동 생성
+- **프로필 조회·수정** (`/user/me`) — 신체정보 변경 시 권장 칼로리 자동 재계산
+- **회원가입 입력 검증** — 아이디 영문/숫자 조합, 비밀번호(영소문자+숫자+특수문자), 성별·활동량·식단목표 enum 정렬
+
+### 2. 식재료 (Ingredient)
+- 식재료 등록·조회·수정·삭제 (개인 격리)
+- **유통기한 임박 알림** — 기본 3일 이내, `days` 파라미터로 조정
+  - 상태 분류: `safe` / `warning`(≤3일) / `danger`(만료/지남)
+
+### 3. 레시피 (Recipe)
+- 레시피 CRUD (관리자 또는 시스템 시드 사용자가 등록)
+- **보유 식재료 기반 추천** (`/api/recipes/recommendations`) — 매칭률 + 보유/누락 식재료를 함께 반환
+- 카테고리·난이도·영양정보·조리 단계 구조화 (프론트 spec 정렬)
+
+### 4. 장보기 (Shopping List)
+- 장보기 항목 CRUD
+- **구매 완료 → 냉장고 자동 이관** (`POST /api/shopping-list/move-to-fridge`)
+
+### 5. 일일 권장 칼로리
+- Mifflin-St Jeor 공식 기반 BMR 계산 → 활동량 가중치 → 식단 목표 보정
+- 회원가입 시 계산하여 저장, 신체정보 수정 시 재계산
+
+### 6. 관리자
+- 전체 유저·레시피 목록, 시스템 통계, 레시피 강제 삭제 (`@PreAuthorize("hasRole('ADMIN')")`)
+
+---
+
+## 📡 API 명세 (요약)
+
+> 인증이 필요한 엔드포인트는 `Authorization: Bearer {JWT}` 헤더 필요.
+
+### 인증
+| Method | Path | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/user/signup` | 회원가입 | ❌ |
+| POST | `/user/login` | 로그인 (JWT 발급) | ❌ |
+| GET | `/oauth2/authorization/kakao` | 카카오 OAuth 시작 | ❌ |
+| GET | `/login/oauth2/code/kakao` | 카카오 콜백 (자동, 프론트로 redirect with token) | ❌ |
+
+### 유저
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/user/me` | 내 프로필 조회 |
+| PUT | `/user/me` | 내 프로필 수정 (권장 칼로리 재계산) |
+
+### 식재료
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/api/ingredients` | 내 식재료 목록 |
+| POST | `/api/ingredients` | 식재료 추가 |
+| PUT | `/api/ingredients/{id}` | 식재료 수정 |
+| DELETE | `/api/ingredients/{id}` | 식재료 삭제 |
+| GET | `/api/ingredients/expiring?days=3` | 유통기한 임박 |
+
+### 레시피
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/api/recipes` | 레시피 목록 |
+| GET | `/api/recipes/recommendations` | 보유 식재료 기반 추천 |
+| POST | `/api/recipes` | 레시피 추가 |
+| PUT | `/api/recipes/{id}` | 레시피 수정 |
+| DELETE | `/api/recipes/{id}` | 레시피 삭제 |
+
+### 장보기
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/api/shopping-list` | 목록 |
+| POST | `/api/shopping-list` | 항목 추가 |
+| DELETE | `/api/shopping-list/{id}` | 항목 삭제 |
+| POST | `/api/shopping-list/move-to-fridge` | 구매 완료 → 냉장고 이관 |
+
+### 관리자 (ADMIN 권한)
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/admin/users` | 전체 유저 |
+| GET | `/admin/recipes` | 전체 레시피 |
+| DELETE | `/admin/recipes/{recipeId}` | 레시피 강제 삭제 |
+| GET | `/admin/stats` | 시스템 통계 |
+
+> Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+
+---
+
+## 📁 프로젝트 구조
+
+```
+src/main/java/com/example/Naengbuhae/
+├── NaengbuhaeApplication.java        # 엔트리포인트
+├── config/                            # 설정 (보안 / OAuth / JWT / CORS / 시드)
+│   ├── SecurityConfig.java
+│   ├── PasswordEncoderConfig.java     # 빈 순환 참조 방지를 위해 분리
+│   ├── JwtUtil.java
+│   ├── JwtAuthenticationFilter.java
+│   ├── CustomOAuth2UserService.java   # 제공자별 사용자 정보 통일 + 자동 연결
+│   ├── OAuth2SuccessHandler.java      # JWT 발급 + 프론트 redirect
+│   ├── OAuth2UserInfo.java            # kakao/naver/google 응답 파서
+│   └── RecipeSeeder.java              # 최초 부팅 시 시드 레시피 + system 사용자
+├── controller/                        # REST 엔드포인트
+│   ├── IngredientController.java
+│   ├── RecipeController.java
+│   └── ShoppingListController.java
+├── domain/                            # JPA 엔티티
+│   ├── Ingredient.java + IngredientStorageType / IngredientCategory
+│   ├── Recipe.java + RecipeIngredient + Difficulty + Nutrition
+│   └── ShoppingItem.java
+├── dto/                               # 요청 / 응답 DTO
+├── exception/
+│   └── GlobalExceptionHandler.java    # @Valid 실패 등을 ApiResponse(JSON)로 통일
+├── repository/                        # Spring Data JPA
+├── service/                           # 비즈니스 로직 (레시피 매칭 등)
+├── user/                              # 유저 / OAuth / 관리자 도메인
+│   ├── User.java + UserRole + OAuthProvider
+│   ├── UserController + UserService + UserRepository
+│   ├── AdminController.java           # @PreAuthorize 기반 권한 분리
+│   └── DTO들 (SignupRequest, ProfileUpdateRequest, UserResponseDto, ApiResponse 등)
+└── util/
+    └── CalorieCalculator.java         # Mifflin-St Jeor BMR/TDEE 계산
+```
+
+---
+
+## 🔐 환경 변수 (.env)
+
+프로젝트 루트의 `.env`에 다음 값을 채운다 (`.env`는 `.gitignore`에 등록됨):
+
+```dotenv
+# DB (Supabase)
+DB_URL=jdbc:postgresql://...
+DB_USERNAME=postgres.xxxxxx
+DB_PASSWORD=실제_비밀번호
+
+# CORS 허용 origin (와일드카드 패턴)
+ALLOWED_ORIGINS=http://localhost:*,http://127.0.0.1:*
+
+# JWT 비밀키
+JWT_SECRET=충분히_긴_랜덤_문자열_64자_이상_권장
+
+# 카카오 OAuth (개발자 콘솔에서 발급)
+KAKAO_CLIENT_ID=발급받은_REST_API_키
+KAKAO_CLIENT_SECRET=발급받은_시크릿_코드
+OAUTH2_FRONTEND_REDIRECT=http://localhost:5173/oauth/callback
+```
+
+---
+
+## 🚀 실행
+
+```bash
+# 의존성 설치 + 빌드
+./gradlew build
+
+# 서버 기동
+./gradlew bootRun
+# 또는 IntelliJ에서 NaengbuhaeApplication 직접 실행
+```
+
+기본 포트: **8080**
+
+---
+
+## 📋 카카오 OAuth 설정 (개발자 콘솔)
+
+1. https://developers.kakao.com/ → 앱 생성
+2. **앱 → 플랫폼 키 → 카카오 로그인 리다이렉트 URI** 등록
+   - `http://localhost:8080/login/oauth2/code/kakao`
+3. **앱 → 일반 → 웹 도메인** 등록 (`http://localhost:8080`)
+4. **카카오 로그인 → 일반 → 사용 설정 ON**
+5. **카카오 로그인 → 동의항목 → 닉네임 필수 동의**
+   - (이메일은 비즈 앱 전환 전엔 권한 받을 수 없음 — placeholder로 자동 처리)
+6. **앱 → 고급 → 클라이언트 시크릿 → 코드 발급 + 활성화**
+7. 발급된 REST API 키와 시크릿을 `.env`에 추가
+
+---
+
+## 🗄 DB 스키마 마이그레이션
+
+JPA `ddl-auto=update`이지만 컬럼 추가/제약 변경은 SQL로 직접 실행해야 한다.
+
+### OAuth 도입 시 (Supabase SQL Editor)
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255);
+UPDATE users SET provider = 'LOCAL' WHERE provider IS NULL;
+ALTER TABLE users ALTER COLUMN provider SET NOT NULL;
+```
+
+---
+
 ## 기본 세팅하기 
 
 ## Java(JDK 17 버전을 사용) - Amazon Corretto 17   
