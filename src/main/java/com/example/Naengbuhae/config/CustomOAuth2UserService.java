@@ -36,10 +36,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         OAuth2UserInfo userInfo = OAuth2UserInfo.from(registrationId, oAuth2User.getAttributes());
 
-        if (userInfo.getEmail() == null || userInfo.getEmail().isBlank()) {
-            throw new OAuth2AuthenticationException("이메일 권한이 필요합니다. 동의 항목에서 이메일 제공을 허용해주세요.");
-        }
-
+        // 이메일이 없는 경우(카카오 일반 앱 등) OAuth2UserInfo가 placeholder를 채워주므로 별도 검증 없이 진행
         User user = findOrCreateUser(userInfo);
 
         // 우리 시스템의 권한과 username을 attributes에 추가 (DefaultOAuth2User는 nameAttributeKey가 필요함)

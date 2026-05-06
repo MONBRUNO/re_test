@@ -29,9 +29,13 @@ public class OAuth2UserInfo {
             case "kakao" -> {
                 // 카카오 응답:
                 // { id: 12345, kakao_account: { email: "...", profile: { nickname: "..." } } }
+                // 일반 앱은 이메일 권한을 못 받으므로(비즈 앱 전환 전), 이메일 없으면 placeholder 생성
                 String providerId = String.valueOf(attributes.get("id"));
                 Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
                 String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+                if (email == null || email.isBlank()) {
+                    email = "kakao_" + providerId + "@kakao.local";
+                }
                 String nickname = null;
                 if (kakaoAccount != null) {
                     Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
