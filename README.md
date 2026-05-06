@@ -246,6 +246,35 @@ ALTER TABLE users ALTER COLUMN provider SET NOT NULL;
 
 ---
 
+## 📝 변경 이력 (시간 순)
+
+> 이 섹션은 시간순 작업 로그입니다. 새 작업은 **맨 아래에 새 엔트리로 append** (위 섹션은 현재 상태 기준이므로 inline 갱신 OK).
+
+### 2026-05-06 — 구글 / 네이버 OAuth 추가 + 네이버 prefill
+
+**커밋**: `0552a7d feat: 구글/네이버 OAuth 로그인 추가 + 네이버 prefill (성별·생년월일)`
+
+- **구글 OAuth 추가** (`application.properties`)
+  - Spring Security 내장 provider 사용 → URL 자동 처리
+  - `scope=profile,email` — 기본 프로필과 이메일만
+- **네이버 OAuth 추가** (`application.properties`)
+  - 내장 provider 없어서 URL 직접 지정 (nid.naver.com / openapi.naver.com)
+  - `scope=name,email,gender,birthday,birthyear`
+  - `user-name-attribute=response` (네이버는 응답이 `{response: {...}}`로 한 번 감싸짐)
+- **네이버 회원정보 자동 prefill**
+  - `OAuth2UserInfo`에 `gender` (M/F→남/여 매핑) + `birthDate` (`birthyear`+`birthday` 조합) 필드 추가
+  - `User.prefillFromOAuth(gender, birthDate)` — 비어있을 때만 채우는 안전한 setter
+  - `CustomOAuth2UserService.createNewUser()`에서 신규 사용자 저장 직후 prefill 호출
+  - **결과**: 네이버 사용자는 이름/이메일/성별/생년월일 4개 항목이 자동 입력 → 사용자는 키/몸무게/활동량/식단 4개만 추가 입력
+
+**관련 변경**:
+- 위쪽 "OAuth 제공자 설정" 섹션에 구글/네이버 콘솔 가이드 추가
+- 환경 변수 예시에 `GOOGLE_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` 추가
+
+**다음 후보**: 모바일 앱 OAuth 흐름 (네이티브 SDK 연동 시 별도 클라이언트 ID 발급 필요)
+
+---
+
 ## 기본 세팅하기 
 
 ## Java(JDK 17 버전을 사용) - Amazon Corretto 17   
