@@ -456,6 +456,59 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 — 만료된 refresh token 자동 정리 스케줄러
+
+**무엇을 했나**: rotation 정책상 재발급 때마다 옛 토큰은 즉시 삭제되지만, 사용자가 14일간 재방문하지 않으면 만료된 row가 그대로 남는다. 매일 새벽 3시(서버 시간) 만료된 `refresh_tokens` row를 일괄 삭제하도록 스케줄러 추가.
+
+#### 동작
+- `RefreshTokenCleanupScheduler.purgeExpiredTokens()` — `@Scheduled(cron = "0 0 3 * * *")`
+- 삭제된 행 수가 1 이상이면 `INFO` 로그로 기록 (모니터링/디버깅 용도)
+- 0건이면 조용히 스킵 (로그 도배 방지)
+
+#### 신규 / 수정 파일
+- 신규: `user/RefreshTokenCleanupScheduler.java`
+- 수정: `NaengbuhaeApplication.java` — `@EnableScheduling` 추가
+- 수정: `user/RefreshTokenRepository.java` — `deleteAllExpiredBefore(LocalDateTime)` 메서드 추가 (`@Modifying` JPQL bulk delete)
+
+#### 운영 메모
+- cron 시간대는 서버 JVM 기본 시간대 기준. 프로덕션 배포 시 서버 TZ가 UTC면 한국 정오에 실행됨 — 실제 트래픽 적은 시간으로 옮기려면 `application-prod.properties`에서 `spring.task.scheduling.*` 또는 cron만 조정 가능.
+- 별도 DB 마이그레이션 불필요 (스키마 변경 없음).
+
+---
+
+### 2026-05-08 (2) — 운영 설정 다듬기 (prod profile + Actuator)
+
+**무엇을 했나**: 로컬(dev)과 운영(prod) 설정을 분리해서 prod에서는 SQL 로그 차단, 에러 응답 단순화, 헬스체크 endpoint를 제공하도록 정리.
+
+#### Profile 구조
+- 베이스: `application.properties` (로컬 dev 기본값 — 지금까지 쓰던 그대로)
+- 운영: `application-prod.properties` (override만 담음)
+- 활성화: 환경변수 `SPRING_PROFILES_ACTIVE=prod`로 prod 프로파일 켜짐. 미설정 시 dev로 자동 fallback.
+
+#### prod에서 바뀌는 것
+- `spring.jpa.show-sql=false`, `format_sql=false` — SQL 로그 차단 (콘솔 부담 + 민감정보 노출 방지)
+- `logging.level.root=INFO`, `org.springframework.security=WARN`, `org.hibernate.SQL=WARN`
+- `server.error.include-stacktrace=never`, `include-message=never`, `include-binding-errors=never` — 에러 응답에 stack trace나 내부 메시지 노출 차단
+- `management.endpoint.health.show-details=never` — `/actuator/health`가 상태만 반환 (DB/디스크 같은 내부 컴포넌트 정보 숨김)
+
+#### Actuator
+- `/actuator/health`만 노출 (`management.endpoints.web.exposure.include=health`)
+- `SecurityConfig`에 `/actuator/health` permitAll 추가 → 로드밸런서/헬스 프로브가 인증 없이 호출 가능
+- 다른 endpoint(`/actuator/info`, `/actuator/metrics` 등)는 명시적으로 노출하기 전까지 차단
+
+#### 신규 / 수정 파일
+- 신규: `application-prod.properties`
+- 수정: `application.properties` — `spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}`, Actuator 노출 규칙 추가
+- 수정: `build.gradle` — `spring-boot-starter-actuator` 의존성 추가
+- 수정: `config/SecurityConfig.java` — `/actuator/health` permitAll
+
+#### 검증 방법
+- 로컬: 그대로 실행 — `dev` 프로파일이라 기존과 동일 (SQL 로그 그대로 보임)
+- prod 실행: `SPRING_PROFILES_ACTIVE=prod ./gradlew bootRun`
+- 헬스체크: `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`
+
+---
+
 ## 기본 세팅하기 
 
 ## Java(JDK 17 버전을 사용) - Amazon Corretto 17   
