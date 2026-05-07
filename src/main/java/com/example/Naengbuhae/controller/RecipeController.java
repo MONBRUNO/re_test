@@ -3,7 +3,11 @@ package com.example.Naengbuhae.controller;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
+// ✨ 새로 만든 DTO와 Service를 import!
+import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.service.RecipeService;
+import com.example.Naengbuhae.service.AiRecipeService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +21,7 @@ import java.util.List;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final AiRecipeService aiRecipeService; // ✨ 완벽한 의존성 주입
 
     // POST: 레시피 등록 (로그인한 사용자와 연결)
     @PostMapping
@@ -47,5 +52,11 @@ public class RecipeController {
     public String delete(@PathVariable Long id, Principal principal) {
         recipeService.deleteRecipe(id, principal.getName());
         return id + "번 레시피가 삭제되었습니다! 🗑️";
+    }
+
+    // ✨ AI 레시피 추천 API 엔드포인트
+    @GetMapping("/ai-recommendations")
+    public AiRecipeResponseDto getAiRecommend(Principal principal) {
+        return aiRecipeService.getAiRecommendation(principal.getName());
     }
 }
