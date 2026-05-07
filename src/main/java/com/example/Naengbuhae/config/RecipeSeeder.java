@@ -3,6 +3,7 @@ package com.example.Naengbuhae.config;
 import com.example.Naengbuhae.domain.Difficulty;
 import com.example.Naengbuhae.domain.Nutrition;
 import com.example.Naengbuhae.domain.Recipe;
+import com.example.Naengbuhae.domain.RecipeCategory;
 import com.example.Naengbuhae.domain.RecipeIngredient;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
@@ -78,7 +79,7 @@ public class RecipeSeeder {
 
     private List<Recipe> buildRecipes(User owner) {
         return List.of(
-                recipe(owner, "계란볶음밥", "밥/면", Difficulty.easy, 15, 2,
+                recipe(owner, "계란볶음밥", RecipeCategory.MAIN, Difficulty.easy, 15, 2,
                         List.of(
                                 "계란을 풀어서 소금으로 간을 합니다.",
                                 "팬에 기름을 두르고 계란을 먼저 볶아줍니다.",
@@ -94,7 +95,7 @@ public class RecipeSeeder {
                                 ing("당근", 0.3, "개", false),
                                 ing("파", 1.0, "줌", false)
                         )),
-                recipe(owner, "닭가슴살 샐러드", "샐러드", Difficulty.easy, 20, 2,
+                recipe(owner, "닭가슴살 샐러드", RecipeCategory.SALAD, Difficulty.easy, 20, 2,
                         List.of(
                                 "닭가슴살을 삶아서 결대로 찢어줍니다.",
                                 "양상추를 한입 크기로 뜯어줍니다.",
@@ -108,7 +109,7 @@ public class RecipeSeeder {
                                 ing("토마토", 1.0, "개", false),
                                 ing("오이", 0.5, "개", false)
                         )),
-                recipe(owner, "우유 스크램블 에그", "간식", Difficulty.easy, 10, 1,
+                recipe(owner, "우유 스크램블 에그", RecipeCategory.SNACK, Difficulty.easy, 10, 1,
                         List.of(
                                 "계란과 우유를 잘 섞어줍니다.",
                                 "팬에 버터를 녹이고 약불로 조절합니다.",
@@ -121,7 +122,7 @@ public class RecipeSeeder {
                                 ing("우유", 50.0, "ml", true),
                                 ing("치즈", 1.0, "장", false)
                         )),
-                recipe(owner, "닭가슴살 볶음", "반찬", Difficulty.easy, 15, 2,
+                recipe(owner, "닭가슴살 볶음", RecipeCategory.SIDE, Difficulty.easy, 15, 2,
                         List.of(
                                 "닭가슴살을 한입 크기로 잘라줍니다.",
                                 "야채를 먹기 좋은 크기로 썰어줍니다.",
@@ -136,7 +137,7 @@ public class RecipeSeeder {
                                 ing("브로콜리", 0.5, "개", false),
                                 ing("파프리카", 0.5, "개", false)
                         )),
-                recipe(owner, "당근 계란찜", "반찬", Difficulty.easy, 25, 2,
+                recipe(owner, "당근 계란찜", RecipeCategory.SIDE, Difficulty.easy, 25, 2,
                         List.of(
                                 "계란을 풀어서 체에 거릅니다.",
                                 "당근을 잘게 다져서 넣습니다.",
@@ -150,7 +151,7 @@ public class RecipeSeeder {
                                 ing("당근", 0.5, "개", true),
                                 ing("파", 1.0, "줌", false)
                         )),
-                recipe(owner, "양상추 샌드위치", "간식", Difficulty.easy, 10, 1,
+                recipe(owner, "양상추 샌드위치", RecipeCategory.SNACK, Difficulty.easy, 10, 1,
                         List.of(
                                 "식빵을 가볍게 구워줍니다.",
                                 "계란을 프라이로 익힙니다.",
@@ -165,7 +166,7 @@ public class RecipeSeeder {
                                 ing("치즈", 1.0, "장", false),
                                 ing("계란", 1.0, "개", false)
                         )),
-                recipe(owner, "우유 요거트 스무디", "음료", Difficulty.easy, 5, 1,
+                recipe(owner, "우유 요거트 스무디", RecipeCategory.DRINK, Difficulty.easy, 5, 1,
                         List.of(
                                 "모든 재료를 믹서기에 넣습니다.",
                                 "부드럽게 갈아줍니다.",
@@ -178,7 +179,7 @@ public class RecipeSeeder {
                                 ing("바나나", 1.0, "개", false),
                                 ing("딸기", 5.0, "개", false)
                         )),
-                recipe(owner, "소고기 야채볶음", "반찬", Difficulty.medium, 20, 2,
+                recipe(owner, "소고기 야채볶음", RecipeCategory.SIDE, Difficulty.medium, 20, 2,
                         List.of(
                                 "소고기를 간장, 설탕, 마늘로 양념합니다.",
                                 "야채를 먹기 좋은 크기로 썰어줍니다.",
@@ -195,7 +196,7 @@ public class RecipeSeeder {
         );
     }
 
-    private static Recipe recipe(User user, String name, String category, Difficulty difficulty,
+    private static Recipe recipe(User user, String name, RecipeCategory category, Difficulty difficulty,
                                  int cookingTime, int servings, List<String> steps,
                                  Nutrition nutrition, List<IngredientSpec> specs) {
         Recipe recipe = new Recipe(user, name, category, difficulty, cookingTime, servings, null, steps, nutrition);

@@ -2,6 +2,7 @@ package com.example.Naengbuhae.dto;
 
 import com.example.Naengbuhae.domain.Difficulty;
 import com.example.Naengbuhae.domain.Recipe;
+import com.example.Naengbuhae.domain.RecipeCategory;
 import lombok.Getter;
 
 import java.util.List;
@@ -12,7 +13,7 @@ public class RecipeResponseDto {
 
     private Long id;
     private String name;
-    private String category;
+    private RecipeCategory category;
     private Difficulty difficulty;
     private Integer cookingTime;
     private Integer servings;

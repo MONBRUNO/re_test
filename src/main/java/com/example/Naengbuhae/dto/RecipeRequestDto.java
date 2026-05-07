@@ -2,6 +2,7 @@ package com.example.Naengbuhae.dto;
 
 import com.example.Naengbuhae.domain.Difficulty;
 import com.example.Naengbuhae.domain.Recipe;
+import com.example.Naengbuhae.domain.RecipeCategory;
 import com.example.Naengbuhae.user.User;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -21,7 +22,7 @@ public class RecipeRequestDto {
     @NotBlank(message = "레시피 이름은 필수 입력 항목입니다.")
     private String name;
 
-    private String category;
+    private RecipeCategory category;
 
     private Difficulty difficulty;
 

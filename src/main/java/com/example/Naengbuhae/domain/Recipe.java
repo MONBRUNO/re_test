@@ -25,7 +25,8 @@ public class Recipe {
     @Column(nullable = false)
     private String name; // 요리 이름 (프론트의 recipe.name)
 
-    private String category; // "밥/면", "반찬", "샐러드" 등
+    @Enumerated(EnumType.STRING)
+    private RecipeCategory category; // 밥/면, 반찬, 샐러드 등
 
     @Enumerated(EnumType.STRING)
     private Difficulty difficulty; // easy / medium / hard
@@ -49,7 +50,7 @@ public class Recipe {
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeIngredient> ingredients = new ArrayList<>();
 
-    public Recipe(User user, String name, String category, Difficulty difficulty,
+    public Recipe(User user, String name, RecipeCategory category, Difficulty difficulty,
                   Integer cookingTime, Integer servings, String imageUrl,
                   List<String> steps, Nutrition nutrition) {
         this.user = user;
