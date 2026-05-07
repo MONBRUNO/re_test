@@ -1,5 +1,8 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.repository.IngredientRepository;
+import com.example.Naengbuhae.repository.RecipeRepository;
+import com.example.Naengbuhae.repository.ShoppingItemRepository;
 import com.example.Naengbuhae.util.CalorieCalculator; // ✅ 1. 계산기 임포트 추가!
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +19,10 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final IngredientRepository ingredientRepository;
+    private final RecipeRepository recipeRepository;
+    private final ShoppingItemRepository shoppingItemRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -124,5 +131,18 @@ public class UserService {
         return userRepository.findByUsername(username)
                 .filter(user -> passwordEncoder.matches(password, user.getPassword()))
                 .orElse(null);
+    }
+
+    // 회원 탈퇴: 사용자가 만든 식재료/레시피/장보기 목록까지 모두 삭제
+    @Transactional
+    public void deleteMyAccount(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        ingredientRepository.deleteByUser(user);
+        recipeRepository.deleteByUser(user);
+        shoppingItemRepository.deleteByUser(user);
+        refreshTokenService.revokeAllForUser(user);
+        userRepository.delete(user);
     }
 }

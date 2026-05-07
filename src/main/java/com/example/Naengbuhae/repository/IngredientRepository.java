@@ -11,4 +11,6 @@ import java.util.List;
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
     // 특정 사용자의 식재료만 가져오는 마법의 메서드 추가!
     List<Ingredient> findByUser(User user);
+
+    void deleteByUser(User user);
 }

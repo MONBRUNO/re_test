@@ -52,6 +52,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/user/signup",
                                 "/user/login",
+                                "/user/token/refresh", // access 만료 후에도 호출 가능해야 함
+                                "/user/logout",        // 만료된 access로도 refresh 폐기 가능해야 함
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",

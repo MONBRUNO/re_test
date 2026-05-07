@@ -14,4 +14,6 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
 
     // ✨ 추가: 내 장보기 목록 중 '체크(구매 완료)'된 것만 싹 다 가져오기!
     List<ShoppingItem> findByUserAndCheckedTrue(User user);
+
+    void deleteByUser(User user);
 }
