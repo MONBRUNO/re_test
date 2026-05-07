@@ -20,7 +20,9 @@ public class JwtUtil {
     @Value("${JWT_SECRET_KEY:default_secret_key_for_local_development_at_least_32_chars_long!}")
     private String SECRET_KEY;
 
-    private final long EXPIRATION = 1000 * 60 * 30; // 30분 유지
+    // access token 만료시간 (ms). 기본 30분. 테스트할 때만 짧게(예: 60000=1분) 두기.
+    @Value("${app.jwt.access-token-expiration-ms:1800000}")
+    private long EXPIRATION;
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
