@@ -60,7 +60,8 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/error",
                                 "/oauth2/**",         // OAuth 인증 시작 (예: /oauth2/authorization/kakao)
-                                "/login/oauth2/**"    // OAuth 콜백 (예: /login/oauth2/code/kakao)
+                                "/login/oauth2/**",   // OAuth 콜백 (예: /login/oauth2/code/kakao)
+                                "/actuator/health"    // 로드밸런서/헬스체크 — 인증 없이 접근 허용
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
