@@ -326,9 +326,98 @@ app.jwt.refresh-token-expiration-ms=${REFRESH_TOKEN_EXPIRATION_MS:1209600000}
 
 #### 다음 후보
 
-- access token 만료시간도 properties로 분리 (현재 `JwtUtil.EXPIRATION` 하드코딩 30분)
+- ~~access token 만료시간도 properties로 분리 (현재 `JwtUtil.EXPIRATION` 하드코딩 30분)~~ → 분리 완료 (`app.jwt.access-token-expiration-ms`)
 - OAuth provider unlink — 탈퇴 시 카카오/구글/네이버에 토큰 unlink 호출 (현재는 자체 DB row만 삭제 → 동일 provider로 다시 로그인하면 신규 사용자처럼 다시 가입됨)
 - 만료된 refresh token row 정리 스케줄러
+
+---
+
+### 2026-05-07 (2) — 인증 흐름 후속 수정 + 식재료 분류/보관방법 enum화
+
+#### 1) 인증 실패 시 401 JSON 응답으로 통일
+
+`oauth2Login()` 활성화 때문에 인증되지 않은 요청에 대해 Spring Security가 OAuth 로그인 URL로 **302 redirect**시키던 default 동작이 살아있었음. 이 때문에 access token 만료 후 보호된 API 호출 시 프론트 wrapper가 401을 못 받아 자동 refresh가 동작하지 않던 버그 발견.
+
+`SecurityConfig.exceptionHandling`으로 `authenticationEntryPoint`를 명시:
+
+```java
+.exceptionHandling(ex -> ex
+    .authenticationEntryPoint((request, response, authException) -> {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
+    })
+)
+```
+
+OAuth 시작/콜백 경로는 어차피 `permitAll`이라 영향 없음. 이후 통합 테스트(access 1분/refresh 3분)로 자동 refresh 흐름이 정상 동작함을 확인.
+
+#### 2) access token 만료시간 properties 분리
+
+`JwtUtil.EXPIRATION` 하드코딩(30분)을 `@Value("${app.jwt.access-token-expiration-ms:1800000}")`로 변경. `.env`의 `JWT_ACCESS_TOKEN_EXPIRATION_MS`로 override 가능. default는 그대로 30분이라 운영 영향 없음.
+
+#### 3) `Ingredient.category` / `storage`를 enum화
+
+##### 신규 enum
+- `Category` — VEGETABLE / MEAT / DAIRY / GRAIN / SEAFOOD / FRUIT / ETC
+- `Storage` — REFRIGERATED / FROZEN / ROOM
+
+```java
+public enum Category {
+    VEGETABLE("채소"), MEAT("육류"), DAIRY("유제품"),
+    GRAIN("곡물"), SEAFOOD("해산물"), FRUIT("과일"), ETC("기타");
+
+    private final String label;
+
+    @JsonValue
+    public String getLabel() { return label; }
+
+    @JsonCreator
+    public static Category fromLabel(String value) {
+        // 한글 라벨 또는 영어 enum 이름 둘 다 허용
+    }
+}
+```
+
+- DB 저장: `@Enumerated(EnumType.STRING)` → enum 이름(영어)으로 저장
+- API 직렬화: `@JsonValue`로 한글 라벨로 응답 → 프론트 변경 0
+- API 역직렬화: `@JsonCreator`가 한글 라벨 / 영어 이름 둘 다 받음
+
+##### 기타 영향
+- `Ingredient.category/storage` 필드 타입을 enum으로 변경
+- `IngredientRequestDto / ResponseDto / ExpiringIngredientResponseDto` 타입 동기화
+- `ShoppingItemService.moveCheckedItemsToFridge`의 하드코딩(`"미분류"`, `"냉장"`)을 `Category.ETC`, `Storage.REFRIGERATED`로 교체
+
+##### ⚠️ DB 마이그레이션 (서버 재시작 *전* 실행)
+
+기존 데이터가 한글 또는 영어 소문자로 저장돼있어서 enum 이름(대문자)과 매칭이 안 됨. Supabase SQL Editor에서 한 번 실행:
+
+```sql
+-- 한글 → 영어 대문자
+UPDATE ingredient SET category = 'VEGETABLE' WHERE category = '채소';
+UPDATE ingredient SET category = 'MEAT'      WHERE category = '육류';
+UPDATE ingredient SET category = 'DAIRY'     WHERE category = '유제품';
+UPDATE ingredient SET category = 'GRAIN'     WHERE category = '곡물';
+UPDATE ingredient SET category = 'SEAFOOD'   WHERE category = '해산물';
+UPDATE ingredient SET category = 'FRUIT'     WHERE category = '과일';
+UPDATE ingredient SET category = 'ETC'       WHERE category IN ('기타', '미분류');
+
+UPDATE ingredient SET storage = 'REFRIGERATED' WHERE storage = '냉장';
+UPDATE ingredient SET storage = 'FROZEN'       WHERE storage = '냉동';
+UPDATE ingredient SET storage = 'ROOM'         WHERE storage = '실온';
+
+-- 영어 소문자 잔재(예: 'dairy') → 대문자
+UPDATE ingredient SET category = UPPER(category)
+WHERE category IN ('vegetable','meat','dairy','grain','seafood','fruit','etc');
+
+UPDATE ingredient SET storage = UPPER(storage)
+WHERE storage IN ('refrigerated','frozen','room');
+```
+
+#### 다음 후보
+
+- `Recipe.category`도 같은 방식으로 enum화 (이번 작업은 `Ingredient` scope만)
+- OAuth provider unlink + 만료된 refresh token row 정리 스케줄러 (이전 entry에서 이월)
 
 ---
 
