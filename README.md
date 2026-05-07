@@ -416,8 +416,43 @@ WHERE storage IN ('refrigerated','frozen','room');
 
 #### 다음 후보
 
-- `Recipe.category`도 같은 방식으로 enum화 (이번 작업은 `Ingredient` scope만)
+- ~~`Recipe.category`도 같은 방식으로 enum화 (이번 작업은 `Ingredient` scope만)~~ → 완료 (아래 entry 참고)
 - OAuth provider unlink + 만료된 refresh token row 정리 스케줄러 (이전 entry에서 이월)
+
+---
+
+### 2026-05-07 (3) — `Recipe.category` enum화
+
+식재료 enum 정리의 자연스러운 확장. 같은 패턴 적용.
+
+#### 신규 enum
+- `RecipeCategory` — MAIN("밥/면") / SIDE("반찬") / SALAD("샐러드") / SNACK("간식") / DRINK("음료") / ETC("기타")
+- 시드(`RecipeSeeder`)의 5개 카테고리 + ETC fallback
+
+#### 영향 범위
+- `Recipe.category` 필드 타입을 `String` → `RecipeCategory`로 변경 + `@Enumerated(EnumType.STRING)`
+- `RecipeRequestDto / ResponseDto` 동기화 (`@JsonValue`로 응답은 한글, `@JsonCreator`로 한글/영어 둘 다 입력 허용)
+- `RecipeSeeder.recipe()` 헬퍼 시그니처가 `String` → `RecipeCategory`로 변경되어 8개 시드 호출처 모두 enum 상수로 교체
+
+#### ⚠️ DB 마이그레이션 (서버 재시작 *전* 실행)
+
+```sql
+UPDATE recipe SET category = 'MAIN'  WHERE category = '밥/면';
+UPDATE recipe SET category = 'SIDE'  WHERE category = '반찬';
+UPDATE recipe SET category = 'SALAD' WHERE category = '샐러드';
+UPDATE recipe SET category = 'SNACK' WHERE category = '간식';
+UPDATE recipe SET category = 'DRINK' WHERE category = '음료';
+UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
+```
+
+#### 검증 상태
+- 컴파일 통과, 시드 8개 enum 이름으로 정상 저장 확인
+- 다만 프론트 `recipeStore.fetchRecipes`는 `/api/recipes`(본인 등록만)를 호출하므로 system 계정 소유 시드는 화면에 노출 안 됨 — enum 동작 자체와는 무관한 기존 동작
+
+#### 다음 후보
+
+- 프론트 `recipeStore`를 `/api/recipes/recommendations` 호출로 변경(응답 형식이 `RecipeMatchResponseDto`라 `normalizeRecipe` 매핑 풀어야 함) → 그래야 시드 레시피가 화면에 보임
+- OAuth provider unlink + 만료된 refresh token row 정리 스케줄러 (계속 이월)
 
 ---
 
