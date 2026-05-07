@@ -273,6 +273,65 @@ NAVER_CLIENT_SECRET=...
 
 ---
 
+### 2026-05-07 — 인증 보강 (회원 탈퇴 + Refresh Token + 로그아웃)
+
+#### 1) 회원 탈퇴 — `DELETE /user/me`
+
+- `UserController.deleteMe(Principal)` 추가 — 본인 계정만 삭제
+- `UserService.deleteMyAccount(username)` — 사용자가 만든 모든 데이터를 cascade로 정리한 뒤 user row 삭제
+  - `IngredientRepository.deleteByUser(user)`
+  - `RecipeRepository.deleteByUser(user)`
+  - `ShoppingItemRepository.deleteByUser(user)`
+  - `RefreshTokenService.revokeAllForUser(user)` — 발급된 refresh token row까지 함께 폐기
+- 식재료/레시피/장보기 Repository에 `deleteByUser(User user)` 메서드를 추가 (Spring Data JPA가 자동 구현)
+
+#### 2) Refresh Token 도입
+
+`access token`이 30분으로 짧기 때문에, 사용자가 매번 다시 로그인하지 않도록 `refresh token`을 같이 발급한다.
+저장 위치는 **DB 테이블** — 서버 재시작에도 보존되고, 로그아웃·탈퇴 시 row를 지워서 즉시 무효화할 수 있다.
+
+##### 새 엔티티 / 저장소 / 서비스
+- `RefreshToken` (`refresh_tokens` 테이블)
+  - 컬럼: `id`, `token (unique)`, `user_id`, `expires_at`
+  - hibernate `ddl-auto=update`로 자동 생성됨
+- `RefreshTokenRepository` — `findByToken`, `deleteByToken`, `deleteByUser`
+- `RefreshTokenService`
+  - `issue(user)` — UUID 형태의 토큰 생성 후 DB 저장
+  - `refresh(refreshToken)` — 기존 row 검증/폐기 후 새 access + 새 refresh 동시 발급 (rotation)
+  - `revoke(refreshToken)` — 단일 row 삭제 (로그아웃)
+  - `revokeAllForUser(user)` — 사용자 모든 row 일괄 삭제 (탈퇴)
+
+##### 새 엔드포인트 (모두 `permitAll` — access 만료 후에도 호출 가능해야 함)
+
+| 메서드 | 경로 | 요청 body | 응답 |
+|---|---|---|---|
+| POST | `/user/token/refresh` | `{"refreshToken":"..."}` | `{"token":"...","refreshToken":"..."}` |
+| POST | `/user/logout` | `{"refreshToken":"..."}` (선택) | `ApiResponse(true, "로그아웃 되었습니다.")` |
+
+`SecurityConfig`의 `permitAll` 매처에 `/user/token/refresh`, `/user/logout` 추가.
+
+#### 3) 로그인 응답 / OAuth 콜백 확장
+
+- `LoginResponse`에 `refreshToken` 필드 추가 → `/user/login` 응답이 `{success, message, token, refreshToken}` 형태가 됨
+- `OAuth2SuccessHandler`에서 access + refresh를 모두 발급한 뒤, 프론트 콜백 URL에 `?token=...&refreshToken=...&needsAdditionalInfo=...` 형태로 redirect
+
+#### `application.properties`에 추가된 설정
+
+```properties
+# refresh token 만료 (기본 14일 = 1209600000ms). 짧게 두면 테스트 편리.
+app.jwt.refresh-token-expiration-ms=${REFRESH_TOKEN_EXPIRATION_MS:1209600000}
+```
+
+`.env`에 별도 키 없이도 동작 (default 값으로 14일).
+
+#### 다음 후보
+
+- access token 만료시간도 properties로 분리 (현재 `JwtUtil.EXPIRATION` 하드코딩 30분)
+- OAuth provider unlink — 탈퇴 시 카카오/구글/네이버에 토큰 unlink 호출 (현재는 자체 DB row만 삭제 → 동일 provider로 다시 로그인하면 신규 사용자처럼 다시 가입됨)
+- 만료된 refresh token row 정리 스케줄러
+
+---
+
 ## 기본 세팅하기 
 
 ## Java(JDK 17 버전을 사용) - Amazon Corretto 17   
