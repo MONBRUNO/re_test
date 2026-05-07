@@ -1,7 +1,9 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.Category;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.ShoppingItem;
+import com.example.Naengbuhae.domain.Storage;
 import com.example.Naengbuhae.dto.ShoppingItemRequestDto;
 import com.example.Naengbuhae.dto.ShoppingItemResponseDto;
 import com.example.Naengbuhae.repository.IngredientRepository; // ✨ 냉장고 창고 추가!
@@ -104,9 +106,9 @@ public class ShoppingItemService {
                     item.getName(),
                     finalQuantity, // Integer 대신 Double 값 삽입
                     LocalDate.now().plusDays(7),
-                    "미분류",
+                    Category.ETC,        // 장보기 이관 시 분류 미정 → 기타
                     unit,
-                    "냉장",
+                    Storage.REFRIGERATED,
                     LocalDate.now()
             );
         }).collect(Collectors.toList());

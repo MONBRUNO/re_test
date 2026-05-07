@@ -1,6 +1,8 @@
 package com.example.Naengbuhae.dto;
 
+import com.example.Naengbuhae.domain.Category;
 import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.domain.Storage;
 import com.example.Naengbuhae.user.User;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
@@ -17,7 +19,7 @@ public class IngredientRequestDto {
 
     @NotBlank(message = "식재료 이름은 필수입니다!")
     private String name;
-    
+
     // 기존: @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다!")
     // 기존: private Integer quantity;
     @NotNull(message = "수량은 필수 입력값입니다!")
@@ -29,15 +31,16 @@ public class IngredientRequestDto {
     @JsonFormat(pattern = "yyyy-MM-dd") // ✅ 추가: 날짜 형식 엇갈림 방어
     private LocalDate expirationDate;
 
-    @NotBlank(message = "분류는 필수입니다!")
-    private String category;
+    // Jackson @JsonCreator가 한글 라벨("채소" 등) → enum으로 자동 변환.
+    // 잘못된 값이 오면 IllegalArgumentException → GlobalExceptionHandler가 400으로 응답.
+    @NotNull(message = "분류는 필수입니다!")
+    private Category category;
 
     @NotBlank(message = "단위는 필수입니다!")
     private String unit;
 
-    @NotBlank(message = "보관 방법은 필수입니다!")
-    @Pattern(regexp = "^(냉장|냉동|실온)$", message = "보관 방법은 '냉장', '냉동', '실온' 중 하나여야 합니다.") // ✅ 추가: 데이터 정합성 강제
-    private String storage;
+    @NotNull(message = "보관 방법은 필수입니다!")
+    private Storage storage;
 
     @NotNull(message = "구매일은 필수 입력값입니다!")
     @PastOrPresent(message = "구매일은 오늘 또는 과거의 날짜여야 합니다!")

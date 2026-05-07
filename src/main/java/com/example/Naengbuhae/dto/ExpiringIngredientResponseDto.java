@@ -1,6 +1,8 @@
 package com.example.Naengbuhae.dto;
 
+import com.example.Naengbuhae.domain.Category;
 import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.domain.Storage;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -20,8 +22,8 @@ public class ExpiringIngredientResponseDto {
     private final String name;
     private final Double quantity;
     private final String unit;
-    private final String category;
-    private final String storage;
+    private final Category category;
+    private final Storage storage;
     private final LocalDate expirationDate;
     private final LocalDate purchaseDate;
     private final long daysLeft;
