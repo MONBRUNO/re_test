@@ -476,6 +476,56 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (11) — Refresh token 재사용 탐지
+
+**무엇을 했나**: rotation 시 기존 토큰을 즉시 삭제하던 걸 `revokedAt` 마킹으로 바꾸고, 폐기된 토큰이 다시 들어오면 도난 시나리오로 간주해 해당 사용자의 모든 refresh token을 무효화. 1년 만료(`(8)`)로 늘어난 토큰의 보안 부담을 줄이는 목적.
+
+#### 동작 흐름
+
+`POST /user/token/refresh` 진입 시:
+
+1. **존재하지 않는 토큰** → `유효하지 않은 refresh token입니다.`
+2. **이미 폐기된 토큰** (`revokedAt != null`):
+   - **grace period 내** (기본 30초): multi-tab race로 추정. invalid 처리만 하고 도난 처리 안 함.
+   - **grace 초과**: **재사용 탐지**. 사용자의 모든 refresh token 즉시 삭제 → "세션이 무효화되었습니다" 응답
+3. **자연 만료** (`expiresAt < now`) → 만료 응답
+4. **정상**: 기존 토큰 `revoke()` 처리 + 새 access/refresh 발급
+
+#### 왜 grace period?
+
+`apiClient`의 `inflightRefresh`는 **한 탭 내**에서만 중복 호출을 막음. 여러 탭이 동시에 401을 받으면 같은 refresh token으로 동시에 `/user/token/refresh`를 호출 — 한 탭은 성공, 나머지 탭은 이미 폐기된 토큰을 다시 제출. 이걸 도난으로 처리하면 정상 사용자가 강제 로그아웃됨.
+
+기본 30초 grace로 multi-tab race는 정상 처리, 진짜 도난(시간 두고 시도)만 탐지.
+
+#### 신규 / 수정 파일
+- 수정: `user/RefreshToken.java` — `revokedAt` 필드 + `isRevoked()` / `revoke()` 메서드 추가
+- 수정: `user/RefreshTokenRepository.java` — cleanup 쿼리를 `expiresAt < now OR revokedAt < cutoff`로 확장 (메서드명도 `deleteExpiredOrOldRevoked`로 변경)
+- 수정: `user/RefreshTokenService.java` — `refresh()`에 재사용 탐지 분기. 정상 rotation은 `delete` 대신 `revoke()`. `revoke(token)` 로그아웃도 마킹으로 변경
+- 수정: `user/RefreshTokenCleanupScheduler.java` — 새 시그니처 사용, 폐기 보존 기간(`revoked-retention-hours`) 설정값 도입
+- 수정: `application.properties` — `app.refresh-token.reuse-grace-seconds` (30), `app.refresh-token.revoked-retention-hours` (24) 추가
+
+#### ⚠️ DB 마이그레이션
+
+`spring.jpa.hibernate.ddl-auto=update`이 nullable 컬럼은 자동 추가하므로 별도 SQL은 필요 없습니다. 그래도 명시적으로 적어두면:
+
+```sql
+ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMP;
+```
+
+#### 검증 시나리오 (수동)
+
+1. 로그인 → DB에서 refresh_tokens row 1개 확인 (`revoked_at = NULL`)
+2. access token 만료 후 API 호출 → 자동 refresh
+3. DB 확인: 옛 row의 `revoked_at`이 채워졌고, 새 row가 추가됨
+4. 옛 (폐기된) refresh token으로 30초 이내 다시 `/user/token/refresh` 호출 → "유효하지 않은 refresh token" (grace)
+5. 옛 토큰으로 30초 후 다시 호출 → "세션이 무효화되었습니다" + DB의 해당 사용자 row 모두 삭제
+
+#### 한계
+- **분산 환경 미지원**: 단일 인스턴스 DB 기반이라 multi-instance에서도 동작은 하지만, race window가 인스턴스 간 시계 차이만큼 늘어남.
+- grace period(30초)가 적당한지 운영하면서 조정 필요. 너무 짧으면 정상 다탭 사용자가 로그아웃됨, 너무 길면 도난 탐지 둔해짐.
+
+---
+
 ### 2026-05-08 (10) — N+1 쿼리 최적화
 
 **무엇을 했나**: 레시피 조회 메서드들에서 발생하던 N+1 쿼리 문제를 두 가지 방법으로 해결.
