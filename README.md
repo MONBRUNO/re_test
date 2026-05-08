@@ -476,6 +476,36 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (12) — 추가 유닛 테스트 (CalorieCalculator + ClientIpUtil)
+
+**무엇을 했나**: 두 util 클래스에 단위 테스트 추가. AllergyMatcher 테스트(`(9)`)에 이어 회귀 방지 범위 확대.
+
+#### 신규 테스트
+
+`CalorieCalculatorTest` (8개) — `@Nested`로 토픽별 그룹화:
+- **식단 목표** (4개): 체중 감량/근육량 증가 조정값 정확도, 건강 관리=체중 유지 동치, 미정의값 fallback
+- **성별** (1개): 같은 조건에서 남 > 여 (BMR 공식 차이 반영)
+- **활동량** (2개): 5단계 multiplier 오름차순, 미정의값은 거의 움직임 없음(1.2)으로 fallback
+- **정수 반환** (1개): 합리적 범위(1000-5000kcal)
+
+`ClientIpUtilTest` (7개) — Mockito로 `HttpServletRequest` mock:
+- X-Forwarded-For 단일/다중 IP (콤마 split, 첫 번째 반환)
+- 헤더 우선순위 (X-Forwarded-For → Proxy-Client-IP → WL-Proxy-Client-IP → HTTP_CLIENT_IP → HTTP_X_FORWARDED_FOR)
+- 모든 헤더 없으면 `getRemoteAddr()` fallback
+- "unknown" / 빈 문자열은 무시하고 다음 헤더 시도
+
+#### 의도
+
+- 절대값으로 검증하면 시간 흐름에 따라 깨지므로 (`LocalDate.now()` 사용) **상대적 차이**로 검증. 예: 체중 감량과 체중 유지의 차이는 항상 정확히 500kcal.
+- 합쳐서 31개 테스트 (AllergyMatcher 16 + Calorie 8 + Ip 7), 실행 시간 ~1.2초
+
+#### 실행
+```bash
+./gradlew test --tests "com.example.Naengbuhae.util.*"
+```
+
+---
+
 ### 2026-05-08 (11) — Refresh token 재사용 탐지
 
 **무엇을 했나**: rotation 시 기존 토큰을 즉시 삭제하던 걸 `revokedAt` 마킹으로 바꾸고, 폐기된 토큰이 다시 들어오면 도난 시나리오로 간주해 해당 사용자의 모든 refresh token을 무효화. 1년 만료(`(8)`)로 늘어난 토큰의 보안 부담을 줄이는 목적.
