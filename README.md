@@ -476,6 +476,44 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (9) — AllergyMatcher 유닛 테스트 (테스트 인프라 시작점)
+
+**무엇을 했나**: 직전에 만든 `AllergyMatcher` 유틸에 단위 테스트 16개 추가. 그동안 비어있다시피 한 테스트 코드 공간(`contextLoads()` 한 줄뿐)에 첫 의미 있는 테스트.
+
+#### 테스트 파일
+- `src/test/java/com/example/Naengbuhae/util/AllergyMatcherTest.java`
+- JUnit 5 + AssertJ (이미 `spring-boot-starter-test`에 포함)
+- `@Nested` 클래스로 메서드별 그룹화 — `ParseAllergens`(6개), `FindMatches`(10개)
+- Spring context 안 띄움 → 빠른 실행 (~0.1초)
+
+#### 커버한 케이스 (요약)
+
+`parseAllergens`:
+- null/blank/공백 → 빈 Set
+- 단일 키워드 lowercase 변환
+- 콤마/세미콜론/슬래시/공백 모두 구분자
+- 중복 제거, trim, 빈 토큰 제거
+
+`findMatches`:
+- 빈 알레르기/식재료 → 빈 결과
+- 정확 일치, 부분 매칭(양방향)
+- 매칭 없을 때
+- 여러 알레르기 중 일부만 매칭, 같은 알레르기가 여러 식재료에 걸려도 한 번만
+- 대소문자 무시
+- null 식재료 항목 스킵 (방어)
+
+#### 실행 방법
+```bash
+./gradlew test --tests AllergyMatcherTest
+```
+
+#### 의도
+- 향후 다른 유틸/서비스 테스트 작성 시 **이 파일을 참고 패턴으로** 활용
+- `AllergyMatcher`에 대한 회귀 방지 — substring 매칭 같은 미묘한 로직이 깨지지 않도록
+- 추후 카테고리 사전 같은 기능을 추가하면 같은 테스트 클래스에 케이스 늘리면 됨
+
+---
+
 ### 2026-05-08 (8) — Refresh token 만료 14일 → 365일 (로그인 유지 UX)
 
 **무엇을 했나**: 프론트의 "로그인 상태 유지" 체크박스 도입에 맞춰 refresh token 기본 만료를 **14일 → 365일**로 변경.
