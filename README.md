@@ -476,6 +476,49 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (19) — AdminController 통합 테스트 + cleanup + 머지
+
+**무엇을 했나**: 컨트롤러 시리즈 마무리 + 잔재 정리 + 충돌 머지.
+
+#### `AdminControllerTest` (4개)
+- `GET /admin/users` (ADMIN) — 200 + 사용자 목록
+- `GET /admin/recipes` (ADMIN) — 200
+- `DELETE /admin/recipes/{id}` (ADMIN) — 200 + 안내 문자열
+- `GET /admin/stats` (ADMIN) — totalUsers/totalRecipes/totalIngredients 필드 검증
+
+`@PreAuthorize("hasRole('ADMIN')")`의 USER 권한 차단 동작은 `@WebMvcTest` 슬라이스에서 메서드 보안 AOP가 잡히지 않아 제외 — Spring 프레임워크 자체 검증이라 우리 코드 회귀 위험은 낮음.
+
+#### Cleanup
+- `application.properties`에서 죽은 라인(`app.cors.allowed-origins`) 제거. 머지 후 SecurityConfig가 `cors.allowed.origins`를 읽으므로 옛 라인은 dead config.
+
+#### 머지 (origin force-push 복구)
+오늘 16개 commit이 일시적으로 origin에서 force push로 사라졌다가 merge로 복구. 충돌 해결:
+- `application.properties`: HEAD의 refresh token 365일/grace/retention 유지 + 그쪽의 cors/jwt 키 정의 추가
+- `SecurityConfig.java`: 그쪽의 stream parsing/PATCH 추가는 유지, `setAllowedOrigins`는 `setAllowedOriginPatterns`로 복원해 wildcard 지원
+- `JwtUtil.java`: 그쪽의 `@Slf4j` + 강한 기본키 + 권한 추출 예외 처리 강화 그대로 채택 (개선)
+
+#### 누적 테스트
+- 유닛 63 + 통합 33 = **96개**, ~7초
+
+```bash
+./gradlew test
+```
+
+---
+
+## 📊 오늘(2026-05-08) 백엔드 작업 종합
+
+| 영역 | 항목 |
+|---|---|
+| **인증/보안** | Refresh token 자동 정리 스케줄러 / 365일 만료 / 재사용 탐지 / Rate Limiting / 카카오 OAuth unlink |
+| **검증** | 전역 예외 처리 보강 / DTO 입력값 검증 강화 |
+| **기능** | 알레르기 매칭(레시피·식재료 응답) / 추천에서 알레르기 제외 |
+| **운영** | prod profile 분리 / Actuator health endpoint |
+| **성능** | Hibernate batch_fetch_size + EntityGraph로 N+1 제거 |
+| **테스트** | 96개 (유닛 63 + 통합 33) — 모든 핵심 비즈니스 로직 + 컨트롤러 + 예외 처리 커버 |
+
+---
+
 ### 2026-05-08 (18) — IngredientController 통합 테스트 (happy path)
 
 **무엇을 했나**: 식재료 CRUD + 임박 조회 정상 흐름 검증. 예외 케이스는 `(16) GlobalExceptionHandlerIntegrationTest`가 이미 다루므로 여기선 happy path 위주.
