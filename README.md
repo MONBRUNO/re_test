@@ -476,6 +476,57 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (7) — 알레르기 기능 활성화
+
+**무엇을 했나**: 그동안 입력만 받고 사용처 0이었던 `User.allergies` 필드를 실제 사용. 사용자의 알레르기 텍스트를 파싱해 식재료/레시피 이름과 부분 매칭(substring), 결과를 응답에 첨부하거나 추천에서 제외.
+
+#### 0단계 — 공통 매처 (`util/AllergyMatcher`)
+
+```java
+parseAllergens("땅콩, 갑각류 / 우유")  // → {"땅콩","갑각류","우유"}
+findMatches(allergens, ingredientNames)  // → 매칭된 알레르기 키워드 Set
+```
+- 콤마/세미콜론/슬래시/공백 모두 구분자로 인식
+- substring 매칭 (양방향) — `"땅콩"` 알레르기가 `"땅콩버터"` 식재료를 잡아냄
+- 한계: 카테고리 사전 없음 → `"우유" → 치즈/요거트` 같은 추론은 못함. 사용자가 키워드를 잘 적는 걸 전제
+
+#### 1단계 — 레시피 응답에 `allergyWarnings`
+
+- `RecipeResponseDto`, `RecipeMatchResponseDto`에 `List<String> allergyWarnings` 필드 추가 (비어있으면 안전)
+- `GET /api/recipes` (내 레시피), `GET /api/recipes/recommendations` 모두 응답에 포함
+- 프론트는 이 배열이 비어있지 않으면 경고 배지/문구 표시 가능
+
+#### 2단계 — 추천에서 알레르기 레시피 제외
+
+- `recommendRecipes`에서 `allergyWarnings`가 비어있지 않은 레시피는 결과에서 필터링
+- 안전 우선 원칙. 전체 레시피 목록(`GET /api/recipes`)에선 경고만 표시되고 그대로 보여줌
+- 단점: 알레르기가 많아 모든 추천이 빠질 수 있음 → 그땐 사용자가 전체 레시피 페이지에서 직접 고르면 됨
+
+#### 3단계 — 식재료 응답에 `allergyWarnings`
+
+- `IngredientResponseDto`에 `List<String> allergyWarnings` 필드 추가
+- `POST /api/ingredients` 응답이 **`Long` ID → `IngredientResponseDto`로 변경** (⚠️ breaking change)
+- `GET /api/ingredients` 응답에도 동일 필드 포함
+- 식재료 등록 직후 사용자에게 즉시 알레르기 매칭 알림 가능 (예: "땅콩버터" 등록 시 `["땅콩"]` 반환)
+
+#### ⚠️ 프론트 영향
+- `POST /api/ingredients`: 응답이 `123` 같은 숫자 → `{id: 123, name: "...", allergyWarnings: [...]}` 객체로 변경. 프론트에서 `data.id`로 ID 접근하도록 수정 필요.
+- 그 외 응답들은 **추가 필드만 있는 비파괴적 변경** — 프론트가 무시해도 동작은 그대로
+
+#### 신규 / 수정 파일
+- 신규: `util/AllergyMatcher.java`
+- 수정: `dto/RecipeResponseDto.java`, `dto/IngredientResponseDto.java` — `allergyWarnings` 필드 추가
+- 수정: `service/RecipeService.java` — `findAllRecipes`, `recommendRecipes`에서 알레르기 적용 + 추천 필터링
+- 수정: `service/IngredientService.java` — `saveIngredient`/`findAllIngredients`에서 알레르기 적용
+- 수정: `controller/IngredientController.java` — `create` 응답 타입 `Long` → `IngredientResponseDto`
+
+#### 추후 확장 가능
+- 카테고리 사전 (`"우유" → 유제품 카테고리`) — 정확도↑
+- `ExpiringIngredientResponseDto`에도 `allergyWarnings` 추가
+- 가입/프로필 수정 시 알레르기 입력을 freetext가 아닌 칩 selector로 전환 (정규화 도움)
+
+---
+
 ### 2026-05-08 (6) — 인증 엔드포인트 Rate Limiting
 
 **무엇을 했나**: `/user/login`, `/user/signup`, `/user/token/refresh`에 IP별 호출 빈도 제한 추가. 로그인 무차별 시도(brute force) 차단 + DB 조회 자체를 막아 부하도 절감.
