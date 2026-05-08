@@ -476,6 +476,46 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (16) — GlobalExceptionHandler 통합 테스트 (@WebMvcTest)
+
+**무엇을 했나**: `(4)`에서 보강한 전역 예외 핸들러의 각 분기를 실제 컨트롤러 호출 → 응답 형태까지 검증. 유닛 테스트와 달리 Spring MVC 한 슬라이스를 띄워서 진짜 라우팅 + 검증 + advice 체인이 동작하는지 본다.
+
+#### 구성
+
+```java
+@WebMvcTest(IngredientController.class)
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false)  // SecurityConfig/JwtFilter 우회
+```
+
+- `IngredientController`를 타깃으로 — 다양한 경로/파라미터/검증을 테스트하기에 좋음
+- SecurityConfig가 필요로 하는 의존성(`JwtUtil`, `JwtAuthenticationFilter`, `CustomOAuth2UserService`, `OAuth2SuccessHandler`)은 빈 그래프 구성용 `@MockBean`
+- `Principal`은 `() -> "alice"` 람다로 직접 주입
+
+#### 테스트 (6개)
+
+| 케이스 | 응답 | 검증 포인트 |
+|---|---|---|
+| `POST /api/ingredients` 빈 body | 400 | 다중 field 에러가 `;`로 합쳐짐 |
+| 서비스에서 `IllegalArgumentException` 발생 | 400 | 서비스 메시지가 응답에 그대로 |
+| `DELETE /api/ingredients/abc` (path 타입 불일치) | 400 | "Long" 안내 메시지 |
+| malformed JSON body | 400 | "입력값" 안내 메시지 |
+| 서비스에서 `RuntimeException` 발생 | 500 | **일반 메시지만**, 내부 디버그 메시지는 응답에 노출 X |
+| 정상 흐름 (참고) | 200 | sanity check |
+
+#### 의도
+
+핵심 검증: **catch-all 분기에서 스택트레이스/내부 메시지가 응답에 새지 않는지** — 이건 보안상 중요한 지점이라 코드 리뷰만으로는 놓치기 쉬움.
+
+#### 누적 테스트
+- 유닛 63 + **통합 6** = **69개**, ~3.5초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (15) — UserService 유닛 테스트 (signup 검증 + 탈퇴 cascade + Kakao unlink)
 
 **무엇을 했나**: signup의 비즈니스 검증 분기, deleteMyAccount의 cascade + Kakao unlink 분기 처리, updateMyProfile의 칼로리 재계산을 모두 커버.
