@@ -476,6 +476,44 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (14) — RecipeService + IngredientService 유닛 테스트
+
+**무엇을 했나**: 두 핵심 서비스의 비즈니스 로직 분기를 모두 커버하는 유닛 테스트 추가. 알레르기 기능과 매칭 로직의 회귀 방지가 핵심.
+
+#### `RecipeServiceTest` (7개)
+
+`recommendRecipes` (5):
+- 사용자 없음 → IllegalArgumentException
+- 필수 재료 모두 보유 → matchRate 100, 매칭률 desc 정렬
+- 필수 재료 누락 → matchRate 0
+- **만료된 식재료는 보유 인정 안 됨** (만료 우유 + 신선 계란인데 우유 필수면 matchRate=0)
+- **알레르기 매칭 레시피는 결과에서 제외** (사용자가 "땅콩" 알레르기면 "땅콩잼토스트"는 결과에 안 들어감)
+
+`findAllRecipes` (2):
+- 사용자 없음 → 예외
+- 알레르기 매칭된 키워드를 각 레시피의 `allergyWarnings`에 첨부 (필터링은 안 함, 표시만)
+
+#### `IngredientServiceTest` (4개)
+
+`saveIngredient` (2):
+- 알레르기 매칭 식재료 등록 시 응답에 `allergyWarnings: ["땅콩"]` 채워짐
+- 매칭 안 되는 식재료는 빈 배열
+
+`findAllIngredients` (1):
+- 다중 알레르기("땅콩, 우유") + 다중 식재료에서 각 항목별 매칭만 정확히 첨부
+
+`findExpiring` (1):
+- 만료된 것 + N일 이내 임박 모두 포함, 범위 밖/유통기한 null은 제외, 임박순 정렬
+
+#### 누적 테스트
+- AllergyMatcher 16 + Calorie 8 + Ip 7 + RefreshToken 10 + **Recipe 7** + **Ingredient 4** = **52개**, ~2초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (13) — RefreshTokenService 유닛 테스트 (재사용 탐지 분기)
 
 **무엇을 했나**: `RefreshTokenService.refresh()`의 5개 분기와 `revoke()`/`issue()` 동작을 모두 커버하는 유닛 테스트 추가. `(11)`에서 도입한 재사용 탐지 로직의 회귀 방지가 핵심.
