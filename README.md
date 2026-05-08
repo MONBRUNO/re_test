@@ -476,6 +476,40 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (13) — RefreshTokenService 유닛 테스트 (재사용 탐지 분기)
+
+**무엇을 했나**: `RefreshTokenService.refresh()`의 5개 분기와 `revoke()`/`issue()` 동작을 모두 커버하는 유닛 테스트 추가. `(11)`에서 도입한 재사용 탐지 로직의 회귀 방지가 핵심.
+
+#### 신규 테스트 (10개)
+
+`RefreshTokenServiceTest` — Mockito + `@InjectMocks`로 Spring context 없이 빠르게:
+
+| 그룹 | 케이스 |
+|---|---|
+| `issue` | UUID 32자 형식 + DB 저장 검증 |
+| `refresh` | 미존재 / 자연 만료 / 폐기-grace내 / 폐기-grace초과(재사용 탐지) / 정상 rotation |
+| `revoke` | 활성 토큰 마킹 / 이미 폐기된 토큰 idempotent / 미존재 토큰 무시 |
+| `revokeAllForUser` | 사용자의 모든 row 삭제 호출 |
+
+#### 핵심 설계
+
+- **`@Value` 필드 주입**: `ReflectionTestUtils.setField`로 `refreshTokenExpirationMs`(365일), `reuseGraceSeconds`(30초) 설정
+- **User 엔티티 mock**: `mock(User.class)`로 생성, `lenient()`로 strict mode 충돌 방지 (getId()는 일부 분기에서만 사용)
+- **revokedAt 시간 조작**: `ReflectionTestUtils.setField(token, "revokedAt", ...)` 으로 grace 내/외 상황 시뮬
+
+#### 검증 포인트
+- 정상 rotation 시 옛 토큰이 **`delete`되지 않고 `revoke()` 마킹**되는지 (재사용 탐지를 위해 row 보존)
+- grace 5초 내 재제출은 `deleteByUser` 호출 안 됨, 5분 후 재제출은 호출됨
+
+#### 누적 테스트
+- AllergyMatcher 16 + Calorie 8 + Ip 7 + **RefreshToken 10** = **41개**, ~1.5초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (12) — 추가 유닛 테스트 (CalorieCalculator + ClientIpUtil)
 
 **무엇을 했나**: 두 util 클래스에 단위 테스트 추가. AllergyMatcher 테스트(`(9)`)에 이어 회귀 방지 범위 확대.
