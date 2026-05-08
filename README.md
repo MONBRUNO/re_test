@@ -476,6 +476,38 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (15) — UserService 유닛 테스트 (signup 검증 + 탈퇴 cascade + Kakao unlink)
+
+**무엇을 했나**: signup의 비즈니스 검증 분기, deleteMyAccount의 cascade + Kakao unlink 분기 처리, updateMyProfile의 칼로리 재계산을 모두 커버.
+
+#### `UserServiceTest` (11개)
+
+`signup` (5):
+- 아이디 중복 → "이미 존재하는 아이디입니다."
+- 이메일 중복 → "이미 사용 중인 이메일입니다."
+- 비번 한글 포함 → "비밀번호에 한글은 사용할 수 없습니다."
+- 비번 패턴 위반 (특수문자 누락) → "8자 이상..."
+- 정상 가입 → "회원가입 성공" + `passwordEncoder.encode` + `userRepository.save` 호출
+
+`deleteMyAccount` (4):
+- 사용자 없음 → 예외
+- LOCAL 사용자 → cascade delete 4개(ingredient/recipe/shopping/refresh) + userRepo.delete, **Kakao unlink는 호출 안 됨**
+- KAKAO 사용자 → cascade + **`kakaoUnlinkClient.unlink(providerId)` 호출됨**
+- NAVER 사용자 → cascade만, Kakao unlink 호출 안 됨 (Naver/Google은 추후 작업)
+
+`updateMyProfile` (2):
+- 사용자 없음 → 예외
+- 정상 update: `User.updateProfile` 호출 + `setRecommendedCalories` 호출(칼로리 재계산)
+
+#### 누적 테스트
+- AllergyMatcher 16 + Calorie 8 + Ip 7 + RefreshToken 10 + Recipe 7 + Ingredient 4 + **User 11** = **63개**, ~3초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (14) — RecipeService + IngredientService 유닛 테스트
 
 **무엇을 했나**: 두 핵심 서비스의 비즈니스 로직 분기를 모두 커버하는 유닛 테스트 추가. 알레르기 기능과 매칭 로직의 회귀 방지가 핵심.
