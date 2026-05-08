@@ -11,6 +11,7 @@ import java.time.LocalDate;
 public class ProfileUpdateRequest {
 
     @NotBlank(message = "이름을 입력해주세요.")
+    @Size(max = 50, message = "이름은 50자 이내여야 합니다.")
     private String name;
 
     @NotBlank(message = "성별은 필수 입력값입니다.")
@@ -18,6 +19,7 @@ public class ProfileUpdateRequest {
     private String gender;
 
     @NotNull(message = "생년월일을 입력해주세요.")
+    @Past(message = "생년월일은 과거의 날짜여야 합니다.")
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthDate;
 
@@ -39,5 +41,6 @@ public class ProfileUpdateRequest {
             message = "식단 목표는 지정된 한글 양식으로만 입력 가능합니다.")
     private String dietGoal;
 
+    @Size(max = 1000, message = "알레르기 정보는 1000자 이내여야 합니다.")
     private String allergies;
 }

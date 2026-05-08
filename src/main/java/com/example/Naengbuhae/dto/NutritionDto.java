@@ -10,19 +10,19 @@ import lombok.Setter;
 @NoArgsConstructor
 public class NutritionDto {
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "칼로리는 0 이상이어야 합니다.")
     private Integer calories;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "단백질 양은 0 이상이어야 합니다.")
     private Integer protein;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "탄수화물 양은 0 이상이어야 합니다.")
     private Integer carbs;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "지방 양은 0 이상이어야 합니다.")
     private Integer fat;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "나트륨 양은 0 이상이어야 합니다.")
     private Integer sodium;
 
     public NutritionDto(Nutrition n) {

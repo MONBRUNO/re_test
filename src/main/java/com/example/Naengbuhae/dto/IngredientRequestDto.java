@@ -18,6 +18,7 @@ import java.time.LocalDate;
 public class IngredientRequestDto {
 
     @NotBlank(message = "식재료 이름은 필수입니다!")
+    @Size(max = 50, message = "식재료 이름은 50자 이내여야 합니다.")
     private String name;
 
     // 기존: @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다!")
@@ -37,6 +38,7 @@ public class IngredientRequestDto {
     private Category category;
 
     @NotBlank(message = "단위는 필수입니다!")
+    @Size(max = 20, message = "단위는 20자 이내여야 합니다.")
     private String unit;
 
     @NotNull(message = "보관 방법은 필수입니다!")
