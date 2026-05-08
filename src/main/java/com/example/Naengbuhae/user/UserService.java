@@ -23,6 +23,7 @@ public class UserService {
     private final RecipeRepository recipeRepository;
     private final ShoppingItemRepository shoppingItemRepository;
     private final RefreshTokenService refreshTokenService;
+    private final KakaoUnlinkClient kakaoUnlinkClient;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -133,16 +134,26 @@ public class UserService {
                 .orElse(null);
     }
 
-    // 회원 탈퇴: 사용자가 만든 식재료/레시피/장보기 목록까지 모두 삭제
+    // 회원 탈퇴: 사용자가 만든 식재료/레시피/장보기 목록까지 모두 삭제 + OAuth 제공자 연결 해제
     @Transactional
     public void deleteMyAccount(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 트랜잭션 롤백 시 unlink 호출이 부적절해지지 않도록 provider 정보를 먼저 스냅샷
+        OAuthProvider provider = user.getProvider();
+        String providerId = user.getProviderId();
 
         ingredientRepository.deleteByUser(user);
         recipeRepository.deleteByUser(user);
         shoppingItemRepository.deleteByUser(user);
         refreshTokenService.revokeAllForUser(user);
         userRepository.delete(user);
+
+        // best-effort: 카카오 연결 해제. 실패해도 탈퇴는 이미 진행되므로 예외를 던지지 않음.
+        // 구글/네이버는 사용자 access token이 필요한데 저장하지 않으므로 추후 작업.
+        if (provider == OAuthProvider.KAKAO && providerId != null) {
+            kakaoUnlinkClient.unlink(providerId);
+        }
     }
 }
