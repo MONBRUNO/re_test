@@ -476,6 +476,28 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (18) — IngredientController 통합 테스트 (happy path)
+
+**무엇을 했나**: 식재료 CRUD + 임박 조회 정상 흐름 검증. 예외 케이스는 `(16) GlobalExceptionHandlerIntegrationTest`가 이미 다루므로 여기선 happy path 위주.
+
+#### `IngredientControllerTest` (6개)
+
+- **POST**: `IngredientResponseDto` 응답 (allergyWarnings 포함 확인)
+- **GET 목록**: 다중 항목 응답 형태
+- **GET expiring** 기본값(days=3) → 서비스 호출 검증
+- **GET expiring?days=7** 명시값 → 서비스에 7 전달 검증
+- **PUT**: id 반환
+- **DELETE**: 안내 문자열에 id 포함
+
+#### 누적 테스트
+- 유닛 63 + 통합 28 = **91개**, ~7초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (17) — UserController + RecipeController 통합 테스트
 
 **무엇을 했나**: 인증 플로우와 레시피 CRUD를 컨트롤러 레벨에서 검증. `@WebMvcTest` + `@AutoConfigureMockMvc(addFilters=false)` 패턴 동일 적용.
