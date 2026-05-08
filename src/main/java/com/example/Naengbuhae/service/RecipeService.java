@@ -11,6 +11,7 @@ import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
+import com.example.Naengbuhae.util.AllergyMatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,13 +45,15 @@ public class RecipeService {
         return recipeRepository.save(recipe).getId();
     }
 
-    // 2. 내 레시피 전체 조회
+    // 2. 내 레시피 전체 조회 — 사용자의 알레르기 정보로 각 레시피에 경고 첨부
     public List<RecipeResponseDto> findAllRecipes(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
+        Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+
         return recipeRepository.findByUser(user).stream()
-                .map(RecipeResponseDto::new)
+                .map(recipe -> toResponseWithAllergyWarnings(recipe, allergens))
                 .collect(Collectors.toList());
     }
 
@@ -113,10 +116,10 @@ public class RecipeService {
     }
 
     // 7. 추천 (매칭률 기반) — 프론트의 matchRecipesWithIngredients와 동일한 로직
-    //   - 모든 시스템 레시피 대상 (필터링 X)
     //   - 매칭률 = 보유 재료 수 / 전체 재료 수 * 100
     //   - 단, 필수재료(required=true)가 하나라도 빠지면 매칭률 0
     //   - 만료된 재료는 보유로 인정하지 않음
+    //   - 사용자 알레르기에 걸리는 레시피는 추천에서 제외 (안전 우선)
     //   - 매칭률 내림차순 정렬
     public List<RecipeMatchResponseDto> recommendRecipes(String username) {
         User user = userRepository.findByUsername(username)
@@ -129,8 +132,11 @@ public class RecipeService {
                 .map(this::normalizeName)
                 .collect(Collectors.toCollection(HashSet::new));
 
+        Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+
         return recipeRepository.findAllWithUserAndIngredients().stream()
-                .map(recipe -> buildMatch(recipe, myIngredientNames))
+                .map(recipe -> buildMatch(recipe, myIngredientNames, allergens))
+                .filter(match -> match.getRecipe().getAllergyWarnings().isEmpty()) // 알레르기 매칭 레시피 제외
                 .sorted(Comparator.comparingInt(RecipeMatchResponseDto::getMatchRate).reversed())
                 .collect(Collectors.toList());
     }
@@ -146,7 +152,7 @@ public class RecipeService {
         }
     }
 
-    private RecipeMatchResponseDto buildMatch(Recipe recipe, Set<String> myIngredientNames) {
+    private RecipeMatchResponseDto buildMatch(Recipe recipe, Set<String> myIngredientNames, Set<String> allergens) {
         List<String> has = new ArrayList<>();
         List<String> missing = new ArrayList<>();
         boolean hasAllRequired = true;
@@ -166,7 +172,20 @@ public class RecipeService {
             matchRate = (int) Math.round((has.size() * 100.0) / total);
         }
 
-        return new RecipeMatchResponseDto(new RecipeResponseDto(recipe), matchRate, has, missing);
+        RecipeResponseDto recipeDto = toResponseWithAllergyWarnings(recipe, allergens);
+        return new RecipeMatchResponseDto(recipeDto, matchRate, has, missing);
+    }
+
+    // 레시피 → DTO 변환 + 알레르기 키워드와 매칭된 결과를 allergyWarnings에 채움
+    private RecipeResponseDto toResponseWithAllergyWarnings(Recipe recipe, Set<String> allergens) {
+        RecipeResponseDto dto = new RecipeResponseDto(recipe);
+        if (!allergens.isEmpty()) {
+            List<String> ingredientNames = recipe.getIngredients().stream()
+                    .map(RecipeIngredient::getName)
+                    .collect(Collectors.toList());
+            dto.setAllergyWarnings(new ArrayList<>(AllergyMatcher.findMatches(allergens, ingredientNames)));
+        }
+        return dto;
     }
 
     // 프론트와 동일한 부분 매칭 (서로 includes — 양쪽 어느 쪽이든 포함하면 매치)

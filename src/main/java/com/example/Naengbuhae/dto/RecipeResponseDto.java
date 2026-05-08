@@ -4,7 +4,9 @@ import com.example.Naengbuhae.domain.Difficulty;
 import com.example.Naengbuhae.domain.Recipe;
 import com.example.Naengbuhae.domain.RecipeCategory;
 import lombok.Getter;
+import lombok.Setter;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,10 @@ public class RecipeResponseDto {
     private NutritionDto nutrition;
     private String username; // 작성자 이름
     private List<RecipeIngredientDto> ingredients;
+
+    // 사용자 알레르기와 매칭된 키워드. 비어있으면 안전. 서비스 계층에서 채워줌.
+    @Setter
+    private List<String> allergyWarnings = Collections.emptyList();
 
     public RecipeResponseDto(Recipe recipe) {
         this.id = recipe.getId();
