@@ -7,13 +7,17 @@ import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
+import com.example.Naengbuhae.util.AllergyMatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,23 +28,39 @@ public class IngredientService {
     private final IngredientRepository ingredientRepository;
     private final UserRepository userRepository;
 
-    // 1. 저장할 때: 현재 로그인한 사용자의 정보를 받아와서 연결!
+    // 1. 저장 — 응답에 allergyWarnings 채워서 등록 직후 사용자가 알레르기 매칭을 알 수 있게.
+    //    (이전엔 Long ID만 반환 → 알레르기 경고를 표시할 수 없었음)
     @Transactional
-    public Long saveIngredient(IngredientRequestDto requestDto, String username) {
+    public IngredientResponseDto saveIngredient(IngredientRequestDto requestDto, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
-        
-        return ingredientRepository.save(requestDto.toEntity(user)).getId();
+
+        Ingredient saved = ingredientRepository.save(requestDto.toEntity(user));
+        Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+        return toResponseWithAllergyWarnings(saved, allergens);
     }
 
-    // 2. 조회할 때: 특정 사용자의 식재료만 필터링해서 조회!
+    // 2. 조회 — 특정 사용자의 식재료. 사용자 알레르기와 매칭된 키워드도 함께.
     public List<IngredientResponseDto> findAllIngredients(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
+        Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+
         return ingredientRepository.findByUser(user).stream()
-                .map(IngredientResponseDto::new)
+                .map(ing -> toResponseWithAllergyWarnings(ing, allergens))
                 .collect(Collectors.toList());
+    }
+
+    // 식재료 → DTO 변환 + 알레르기 매칭 결과 채움
+    private IngredientResponseDto toResponseWithAllergyWarnings(Ingredient ingredient, Set<String> allergens) {
+        IngredientResponseDto dto = new IngredientResponseDto(ingredient);
+        if (!allergens.isEmpty()) {
+            dto.setAllergyWarnings(new ArrayList<>(
+                    AllergyMatcher.findMatches(allergens, Collections.singletonList(ingredient.getName()))
+            ));
+        }
+        return dto;
     }
 
     // 3. 식재료 삭제 기능 (본인 확인 로직 추가)

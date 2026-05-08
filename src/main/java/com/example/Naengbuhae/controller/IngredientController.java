@@ -18,9 +18,10 @@ public class IngredientController {
 
     private final IngredientService ingredientService;
 
-    // POST: 저장할 때 현재 로그인한 사용자의 정보를 Principal에서 가져옴
+    // POST: 저장할 때 현재 로그인한 사용자의 정보를 Principal에서 가져옴.
+    // 응답에 allergyWarnings를 포함해 등록 직후 알레르기 매칭 안내가 가능 (이전엔 Long ID만 반환)
     @PostMapping
-    public Long create(@Valid @RequestBody IngredientRequestDto requestDto, Principal principal) {
+    public IngredientResponseDto create(@Valid @RequestBody IngredientRequestDto requestDto, Principal principal) {
         return ingredientService.saveIngredient(requestDto, principal.getName());
     }
 

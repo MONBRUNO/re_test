@@ -4,7 +4,11 @@ import com.example.Naengbuhae.domain.Category;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.Storage;
 import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 
 @Getter
 public class IngredientResponseDto {
@@ -17,6 +21,10 @@ public class IngredientResponseDto {
     private String unit;
     private Storage storage;     // 동일
     private LocalDate purchaseDate;
+
+    // 사용자 알레르기와 매칭된 키워드. 비어있으면 안전. 서비스 계층에서 채워줌.
+    @Setter
+    private List<String> allergyWarnings = Collections.emptyList();
 
     // 생성자: "DB에서 꺼낸 진짜 식재료(Entity)를 주면, 내가 택배 상자(DTO)에 예쁘게 옮겨 담을게!"
     public IngredientResponseDto(Ingredient ingredient) {
