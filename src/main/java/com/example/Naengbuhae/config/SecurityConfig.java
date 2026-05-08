@@ -17,14 +17,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
-    private String allowedOrigins;
+    @Value("${cors.allowed.origins}")
+    private String allowedOriginsString;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
@@ -92,14 +93,18 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+        // Stream API로 공백 제거 + 빈 값 필터링
+        List<String> parsedOrigins = Arrays.stream(allowedOriginsString.split(","))
                 .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList());
 
-        configuration.setAllowedOriginPatterns(origins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // Wildcard 패턴(예: http://localhost:*) 지원을 위해 setAllowedOriginPatterns 사용.
+        // setAllowedOrigins는 정확 매칭만 가능하므로 와일드카드와 호환 안 됨.
+        configuration.setAllowedOriginPatterns(parsedOrigins);
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
