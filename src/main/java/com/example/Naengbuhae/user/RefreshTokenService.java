@@ -20,7 +20,7 @@ public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
 
-    @Value("${app.jwt.refresh-token-expiration-ms:1209600000}") // 14일
+    @Value("${app.jwt.refresh-token-expiration-ms:31536000000}") // 365일 (rotation으로 활성 사용자는 사실상 영구)
     private long refreshTokenExpirationMs;
 
     @Transactional
