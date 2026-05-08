@@ -476,6 +476,64 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (4) — 전역 예외 처리 보강
+
+**무엇을 했나**: 기존 `GlobalExceptionHandler`가 4개 예외만 잡고 있었는데, 잡지 못한 예외들이 기본 500 응답으로 떨어지면서 스택트레이스가 노출될 위험이 있었음. 누락된 케이스를 메꾸고 다중 필드 에러도 한 번에 보여주도록 보강.
+
+#### 새로 추가된 핸들러
+
+| 예외 | 상태 코드 | 처리 |
+|---|---|---|
+| `Exception` (catch-all) | 500 | 사용자엔 일반 메시지, 서버 로그엔 스택트레이스 (`log.error`) |
+| `AccessDeniedException` | 403 | `@PreAuthorize` 실패. JSON 응답으로 통일 (default는 HTML) |
+| `ConstraintViolationException` | 400 | `@Validated`가 붙은 path/query 파라미터 검증 실패 |
+| `MissingServletRequestParameterException` | 400 | 필수 `@RequestParam` 누락 시 어떤 파라미터가 빠졌는지 안내 |
+| `MethodArgumentTypeMismatchException` | 400 | path variable / query param 타입 불일치 (`/api/recipes/abc`) |
+
+#### 개선된 핸들러
+
+- `MethodArgumentNotValidException` — 첫 번째 field 에러만 반환하던 걸 모든 field 에러를 `; `로 합쳐서 한 번에 노출. 다중 입력 폼에서 모든 잘못된 곳을 한 번에 수정 가능.
+
+#### 응답 형식
+- 모든 핸들러가 동일한 `ApiResponse(success: false, message: ...)` 사용 → 프론트는 핸들러 종류 신경 안 쓰고 통일된 처리 가능
+- HTTP 상태 코드만 기준으로 분기: 400(잘못된 입력) / 403(권한 없음) / 409(중복) / 500(서버 에러)
+
+#### 신규 / 수정 파일
+- 수정: `exception/GlobalExceptionHandler.java`
+
+---
+
+### 2026-05-08 (3) — OAuth provider unlink (회원 탈퇴 시 카카오 연결 해제)
+
+**무엇을 했나**: 회원 탈퇴 시 우리 DB에서 사용자 데이터를 지우는 것에 더해, 카카오로 가입한 사용자라면 카카오 측 연결도 해제(`unlink`) 호출. providerId만으로 호출 가능한 카카오 Admin Key 방식 사용 — provider access token을 따로 저장할 필요 없음.
+
+#### 동작
+- `UserService.deleteMyAccount()` 끝에 `provider == KAKAO`이면 `KakaoUnlinkClient.unlink(providerId)` 호출
+- best-effort: 호출 실패해도 예외 던지지 않고 `WARN` 로그만 남김. 탈퇴 자체는 이미 진행됨.
+- `RestTemplate` connect/read timeout 3초/5초 → 카카오 서버 hang 시 트랜잭션 잠기는 것 방지
+
+#### 설정 추가
+- `application.properties`: `app.oauth.kakao.admin-key=${KAKAO_ADMIN_KEY:}`
+- `.env`에 `KAKAO_ADMIN_KEY` 추가 필요 (카카오 개발자 콘솔 > 앱 설정 > 앱 키 > **Admin 키**)
+- 미설정 시 unlink 자동 스킵 (탈퇴는 정상 진행, 카카오 측 연결만 남음 — 사용자가 카카오 계정 설정에서 직접 해제해야 함)
+
+#### 신규 / 수정 파일
+- 신규: `user/KakaoUnlinkClient.java`
+- 수정: `user/UserService.java` — `deleteMyAccount` 끝에 unlink 호출 + provider 정보 스냅샷
+- 수정: `application.properties` — Admin Key property 추가
+
+#### 구글/네이버는 추후 작업
+- 두 provider의 unlink/revoke API는 **사용자 access token**이 필요한데, 현재 OAuth 플로우에서는 프로바이더 토큰을 저장하지 않고 우리 JWT만 발급하고 있음.
+- 옵션: (1) `OAuth2AuthorizedClientService` JDBC 구현 도입, (2) User 엔티티에 provider access/refresh token 컬럼 추가
+- 양쪽 다 보안 영향(토큰 저장 = 추가 secret at rest)이 있어 별도 결정 필요. 그 전까지는 구글/네이버 사용자 탈퇴 시 우리 DB만 정리되고 provider 측 연결은 사용자가 직접 해제해야 함.
+
+#### 검증 방법
+- 카카오로 로그인 → MyCustom에서 회원 탈퇴
+- 서버 로그: `[KakaoUnlink] 성공 providerId=...` 확인
+- 같은 카카오 계정으로 다시 로그인 시 카카오 동의 화면이 다시 뜨면 정상 (이전 동의가 끊긴 것)
+
+---
+
 ### 2026-05-08 (2) — 운영 설정 다듬기 (prod profile + Actuator)
 
 **무엇을 했나**: 로컬(dev)과 운영(prod) 설정을 분리해서 prod에서는 SQL 로그 차단, 에러 응답 단순화, 헬스체크 endpoint를 제공하도록 정리.
