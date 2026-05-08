@@ -476,6 +476,66 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (6) — 인증 엔드포인트 Rate Limiting
+
+**무엇을 했나**: `/user/login`, `/user/signup`, `/user/token/refresh`에 IP별 호출 빈도 제한 추가. 로그인 무차별 시도(brute force) 차단 + DB 조회 자체를 막아 부하도 절감.
+
+#### 구현
+- 라이브러리: **Bucket4j** (Token Bucket 알고리즘) `8.10.1`
+- `RateLimitFilter` (`OncePerRequestFilter`) — JWT 필터보다 앞에 위치. 인증/조회 일어나기 전에 차단.
+- `(IP + path)` 조합을 키로 `ConcurrentHashMap<String, Bucket>`에 bucket 할당
+- IP 추출은 `ClientIpUtil`(X-Forwarded-For 등 프록시 헤더 우선) 재활용
+
+#### 제한 정책 (분당 IP당)
+
+| 엔드포인트 | 분당 호출 |
+|---|---|
+| `/user/login` | 5회 |
+| `/user/signup` | 5회 |
+| `/user/token/refresh` | 10회 (정상은 30분에 1회 — 멀티탭/재시도 여유) |
+
+초과 시 `429 Too Many Requests` + JSON `{success:false, message:"요청이 너무 많습니다..."}`.
+
+#### 신규 / 수정 파일
+- 신규: `config/RateLimitFilter.java`
+- 수정: `config/SecurityConfig.java` — `addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)`
+- 수정: `build.gradle` — `com.bucket4j:bucket4j-core:8.10.1` 추가
+
+#### 한계 / 추후 작업
+- **단일 인스턴스 메모리 기반** — 다중 인스턴스로 확장 시 bucket이 인스턴스끼리 공유되지 않으므로 IP당 N배 허용됨. Redis(`bucket4j-redis`)로 분산 저장 필요.
+- 메모리에 bucket이 무한정 쌓일 수 있음(IP는 무한). 현재는 단일 인스턴스라 큰 문제 없지만, 트래픽 늘면 주기적 정리 스케줄러 추가 필요.
+- 정상 사용자가 NAT 뒤에 여러 명 있는 환경(학교/카페 공용망)에선 IP가 같아 같이 차단될 수 있음. 5회/분이면 일반 사용엔 충분히 여유.
+
+---
+
+### 2026-05-08 (5) — DTO 입력값 검증 보강
+
+**무엇을 했나**: 각 RequestDto의 검증 갭을 메우는 작은 수정들. 가장 큰 갭은 `LoginRequest`에 검증이 0개였던 점. 그 외 자유 텍스트의 길이 cap, 생년월일 미래 차단, 배열 크기 cap, 누락된 검증 메시지 등.
+
+#### 주요 변경
+
+| 파일 | 추가된 검증 |
+|---|---|
+| `LoginRequest` | `@NotBlank` on username/password (이전엔 검증 0개), 컨트롤러에 `@Valid` 추가 |
+| `SignupRequest` | `birthDate @Past`, name/email/password/allergies 길이 cap |
+| `ProfileUpdateRequest` | `birthDate @Past`, name/allergies 길이 cap |
+| `IngredientRequestDto` | name(50)/unit(20) 길이 cap |
+| `ShoppingItemRequestDto` | name(50)/unit(20) 길이 cap |
+| `RecipeRequestDto` | name(100)/imageUrl(1000) 길이, steps 배열(50개)·각 단계 텍스트(1000자), ingredients 배열(100개) cap |
+| `RecipeIngredientDto` | name(50)/unit(20) 길이 cap |
+| `NutritionDto` | 누락된 `@PositiveOrZero` 메시지 모두 추가 |
+
+#### 의도
+- API 경계에서 **거대 페이로드 차단** — 자유 텍스트 길이 cap으로 1MB 알레르기 같은 abuse 방지
+- **전역 예외 처리 강화와 결합** — 검증 실패 시 모든 field 에러를 한 번에 사용자에게 안내 (이전 라운드)
+- DB 컬럼 길이와 정합성 — `User.allergies`는 `length=1000`, DTO도 1000으로 매칭
+
+#### 신규 / 수정 파일
+- 수정: `user/LoginRequest.java`, `user/SignupRequest.java`, `user/ProfileUpdateRequest.java`, `user/UserController.java` (login에 `@Valid` 추가)
+- 수정: `dto/IngredientRequestDto.java`, `dto/ShoppingItemRequestDto.java`, `dto/RecipeRequestDto.java`, `dto/RecipeIngredientDto.java`, `dto/NutritionDto.java`
+
+---
+
 ### 2026-05-08 (4) — 전역 예외 처리 보강
 
 **무엇을 했나**: 기존 `GlobalExceptionHandler`가 4개 예외만 잡고 있었는데, 잡지 못한 예외들이 기본 500 응답으로 떨어지면서 스택트레이스가 노출될 위험이 있었음. 누락된 케이스를 메꾸고 다중 필드 에러도 한 번에 보여주도록 보강.
