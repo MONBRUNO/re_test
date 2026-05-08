@@ -476,6 +476,26 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (8) — Refresh token 만료 14일 → 365일 (로그인 유지 UX)
+
+**무엇을 했나**: 프론트의 "로그인 상태 유지" 체크박스 도입에 맞춰 refresh token 기본 만료를 **14일 → 365일**로 변경.
+
+#### 변경 사항
+- `application.properties`: `app.jwt.refresh-token-expiration-ms` 기본값 `1209600000` → `31536000000`
+- `RefreshTokenService`: `@Value` fallback 값도 동일하게 갱신
+
+#### 동작
+- 활성 사용자 (앱을 365일 안에 한 번이라도 사용): rotation으로 토큰이 매번 갱신되어 **사실상 영구 로그인**
+- 365일간 미사용: 재로그인 강제 (사실상 자연 잊힘)
+- 프론트에서 "로그인 상태 유지" 미체크 시: refresh token이 sessionStorage에 들어가 브라우저 종료 시 휘발 → 백엔드 만료 정책과 무관하게 즉시 로그아웃
+
+#### 운영 메모
+- DB의 `refresh_tokens.expires_at`은 발급 시점에 계산되므로, **이미 발급된 14일짜리 토큰은 그대로 14일 후 만료됨**. 이 변경 이후 새로 발급되는 토큰만 365일 적용
+- `.env`에 `REFRESH_TOKEN_EXPIRATION_MS`로 override 가능 (기존 그대로)
+- DB cleanup 스케줄러는 이미 만료된 row만 삭제하므로 영향 없음
+
+---
+
 ### 2026-05-08 (7) — 알레르기 기능 활성화
 
 **무엇을 했나**: 그동안 입력만 받고 사용처 0이었던 `User.allergies` 필드를 실제 사용. 사용자의 알레르기 텍스트를 파싱해 식재료/레시피 이름과 부분 매칭(substring), 결과를 응답에 첨부하거나 추천에서 제외.
