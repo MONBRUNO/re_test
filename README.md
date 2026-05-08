@@ -476,6 +476,41 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (17) — UserController + RecipeController 통합 테스트
+
+**무엇을 했나**: 인증 플로우와 레시피 CRUD를 컨트롤러 레벨에서 검증. `@WebMvcTest` + `@AutoConfigureMockMvc(addFilters=false)` 패턴 동일 적용.
+
+#### `UserControllerTest` (10개)
+
+핵심 인증 플로우:
+- **signup**: 성공 / 비즈니스 실패(중복 등 — 200 + success:false) 두 분기
+- **login**: 성공 (token + refreshToken 응답) / 실패 (success:false, 토큰 null)
+- **token/refresh**: 정상 발급 / refreshToken 누락 시 400
+- **logout**: refreshToken 있을 때 revoke 호출 / 없을 때 멱등(success:true)
+- **me GET / DELETE**: 프로필 조회, 회원 탈퇴 호출 검증
+
+#### `RecipeControllerTest` (6개)
+
+CRUD + 추천:
+- **POST**: 생성 후 id 반환
+- **GET 목록 / 추천**: findAllRecipes / recommendRecipes 결과 그대로 응답
+- **PUT / DELETE**: 권한 체크는 서비스 책임이라 여기선 호출 검증만
+- **유효성 위반 POST**: 빈 이름 등 → 400 + success:false (advice 동작 확인)
+
+#### 의도 / 한계
+
+- **AI 추천 컨트롤러(`/api/recipes/ai-recommendations`)는 다른 담당자 영역**이라 동작 검증 안 함. `AiRecipeService`는 `@MockBean`으로 빈 그래프만 만족시킴.
+- 컨트롤러 슬라이스라 실제 DB/JPA는 안 띄움 — 라우팅/검증/직렬화/응답 형태가 검증 범위.
+
+#### 누적 테스트
+- 유닛 63 + 통합 6 + **User 10** + **Recipe 6** = **85개**, ~6초
+
+```bash
+./gradlew test
+```
+
+---
+
 ### 2026-05-08 (16) — GlobalExceptionHandler 통합 테스트 (@WebMvcTest)
 
 **무엇을 했나**: `(4)`에서 보강한 전역 예외 핸들러의 각 분기를 실제 컨트롤러 호출 → 응답 형태까지 검증. 유닛 테스트와 달리 Spring MVC 한 슬라이스를 띄워서 진짜 라우팅 + 검증 + advice 체인이 동작하는지 본다.
