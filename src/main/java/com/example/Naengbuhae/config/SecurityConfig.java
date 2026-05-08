@@ -81,6 +81,8 @@ public class SecurityConfig {
                             response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
                         })
                 )
+                // 인증 엔드포인트 brute-force 방지: JWT 필터보다 앞에 두어 DB 조회 전에 차단
+                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
