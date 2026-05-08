@@ -17,14 +17,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
-    private String allowedOrigins;
+    @Value("${cors.allowed.origins}")
+    private String allowedOriginsString;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
@@ -89,14 +90,16 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+        // 🔥 Hotfix 1: Stream API를 이용한 공백 제거 및 빈 값 필터링
+        List<String> parsedOrigins = Arrays.stream(allowedOriginsString.split(","))
+                .map(String::trim)                  // 앞뒤 공백 제거
+                .filter(origin -> !origin.isEmpty()) // 빈 문자열 제거
+                .collect(Collectors.toList());
 
-        configuration.setAllowedOriginPatterns(origins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedOrigins(parsedOrigins); // 정제된 리스트 주입
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
