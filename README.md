@@ -476,6 +476,54 @@ UPDATE recipe SET category = 'ETC'   WHERE category = '기타';
 
 ---
 
+### 2026-05-08 (10) — N+1 쿼리 최적화
+
+**무엇을 했나**: 레시피 조회 메서드들에서 발생하던 N+1 쿼리 문제를 두 가지 방법으로 해결.
+
+#### 문제 (Before)
+
+| 메서드 | 발생 쿼리 수 (N개 레시피) | 원인 |
+|---|---|---|
+| `findByUser` (`/api/recipes`) | `1 + 3N` | user(N) + ingredients(N) + steps(N) 모두 lazy |
+| `findAllWithUser` (admin `/admin/recipes`) | `1 + 2N` | user는 fetch, ingredients(N) + steps(N) lazy |
+| `findAllWithUserAndIngredients` (`/api/recipes/recommendations`) | `1 + N` | user/ingredients fetch, steps(N) lazy |
+
+#### 해결 방법
+
+**1. Hibernate `default_batch_fetch_size=100`** (`application.properties`)
+
+```properties
+spring.jpa.properties.hibernate.default_batch_fetch_size=100
+```
+
+lazy collection이 로드될 때 Hibernate가 IN 절(`WHERE recipe_id IN (?,?,?,...)`)로 묶어서 한 번에 fetch. **모든 lazy 컬렉션에 자동 적용** — 코드 한 줄도 안 바꾸고 ingredients/steps의 N+1 제거.
+
+**2. `RecipeRepository.findByUser`에 `@EntityGraph(user)` 추가**
+
+`@OneToMany`/`@ElementCollection` 두 개를 동시에 JOIN FETCH하면 `MultipleBagFetchException`이 나기 때문에, 단일 `@ManyToOne user`만 EntityGraph로 즉시 fetch. ingredients/steps는 batch fetching으로 처리.
+
+#### 결과 (After)
+
+| 메서드 | 쿼리 수 | 비고 |
+|---|---|---|
+| `findByUser` | **3** | recipe+user 1개 + ingredients 배치 1개 + steps 배치 1개 |
+| `findAllWithUser` | **3** | 기존 JOIN FETCH(user) + ingredients/steps 배치 |
+| `findAllWithUserAndIngredients` | **2** | 기존 JOIN FETCH(user, ingredients) + steps 배치 |
+
+#### 신규 / 수정 파일
+- 수정: `application.properties` — batch_fetch_size 추가
+- 수정: `repository/RecipeRepository.java` — `findByUser`에 `@EntityGraph(user)`
+
+#### 검증
+- 컴파일 + 기존 AllergyMatcher 테스트 통과
+- 실제 N+1 효과는 `spring.jpa.show-sql=true` 환경에서 `/api/recipes` 호출 후 콘솔의 SELECT 개수로 확인 가능
+
+#### 추가 개선 여지
+- 데이터가 더 늘어나면 `recipe.steps`를 `String` (예: 줄바꿈으로 join된)으로 평탄화하거나 별도 lazy DTO 패턴 도입
+- `findAll` 류에 페이지네이션 도입 (배치 사이즈와 별개로 페이로드 자체를 줄이는 효과)
+
+---
+
 ### 2026-05-08 (9) — AllergyMatcher 유닛 테스트 (테스트 인프라 시작점)
 
 **무엇을 했나**: 직전에 만든 `AllergyMatcher` 유틸에 단위 테스트 16개 추가. 그동안 비어있다시피 한 테스트 코드 공간(`contextLoads()` 한 줄뿐)에 첫 의미 있는 테스트.
