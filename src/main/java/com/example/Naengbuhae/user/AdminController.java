@@ -37,7 +37,7 @@ public class AdminController {
     // ✨ AOP 적용 완료! 컨트롤러는 오직 '삭제'에만 집중함.
     @DeleteMapping("/recipes/{recipeId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Audit(action = "DELETE_RECIPE", targetType = "RECIPE", description = "관리자 권한으로 레시피 강제 삭제 (부적절한 콘텐츠)")
+    @Audit(action = "DELETE_RECIPE", targetType = "RECIPE", idParamName = "recipeId", description = "관리자 권한으로 레시피 강제 삭제 (부적절한 콘텐츠)")
     public String deleteRecipeByAdmin(@PathVariable Long recipeId) {
         
         recipeService.deleteRecipeByAdmin(recipeId);

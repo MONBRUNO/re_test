@@ -26,6 +26,25 @@ public class JwtUtil {
     @Value("${app.jwt.access-token-expiration-ms:1800000}")
     private long EXPIRATION;
 
+    @jakarta.annotation.PostConstruct
+    public void checkDefaultKey() {
+        String defaultKey = "this_is_a_very_long_default_secret_key_for_local_development_environment_12345!";
+        if (defaultKey.equals(secretKey)) {
+            log.error("===============================================================");
+            log.error(" [CRITICAL SECURITY WARNING] ");
+            log.error("---------------------------------------------------------------");
+            log.error(" ⚠️  기본(Default) JWT 시크릿 키가 감지되었습니다!");
+            log.error(" 현재 운영 환경의 보안이 매우 취약한 상태일 수 있습니다.");
+            log.error("");
+            log.error(" 조치 사항:");
+            log.error(" 1. .env 파일의 'JWT_SECRET_KEY'를 복잡한 문자열로 변경하세요.");
+            log.error(" 2. 변경 후 애플리케이션을 반드시 재시작하세요.");
+            log.error("===============================================================");
+        } else {
+            log.info("[Security] 커스텀 JWT 시크릿 키가 정상적으로 로드되었습니다.");
+        }
+    }
+
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
