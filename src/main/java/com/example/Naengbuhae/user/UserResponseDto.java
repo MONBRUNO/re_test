@@ -18,6 +18,7 @@ public class UserResponseDto {
     private String allergies;
     private UserRole role;
     private Integer recommendedCalories;
+    private boolean emailVerified;
 
     public UserResponseDto(User user) {
         this.id = user.getId();
@@ -33,5 +34,6 @@ public class UserResponseDto {
         this.allergies = user.getAllergies();
         this.role = user.getRole();
         this.recommendedCalories = user.getRecommendedCalories();
+        this.emailVerified = user.isEmailVerified();
     }
 }

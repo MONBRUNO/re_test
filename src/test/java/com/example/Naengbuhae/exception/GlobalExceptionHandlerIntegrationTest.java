@@ -105,7 +105,7 @@ class GlobalExceptionHandlerIntegrationTest {
     @Test
     @DisplayName("예기치 못한 RuntimeException → 500 + 일반 메시지 (스택트레이스 응답에 노출 X)")
     void unexpectedException_returns500WithGenericMessage() throws Exception {
-        when(ingredientService.findAllIngredients("alice"))
+        when(ingredientService.findAllIngredients("alice", null))
                 .thenThrow(new RuntimeException("내부 디버그용 메시지 — 응답엔 노출 금지"));
 
         mockMvc.perform(get("/api/ingredients").principal(alice))
@@ -117,7 +117,7 @@ class GlobalExceptionHandlerIntegrationTest {
     @Test
     @DisplayName("정상 흐름 (참고용): 200 OK")
     void successCase() throws Exception {
-        when(ingredientService.findAllIngredients("alice")).thenReturn(Collections.emptyList());
+        when(ingredientService.findAllIngredients("alice", null)).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/ingredients").principal(alice))
                 .andExpect(status().isOk());

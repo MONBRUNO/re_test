@@ -21,6 +21,8 @@ public class IngredientResponseDto {
     private String unit;
     private Storage storage;     // 동일
     private LocalDate purchaseDate;
+    private Long fridgeId;
+    private String addedBy; // 등록한 사람 username (가족 공유 시 누가 추가했는지 표시용)
 
     // 사용자 알레르기와 매칭된 키워드. 비어있으면 안전. 서비스 계층에서 채워줌.
     @Setter
@@ -36,5 +38,7 @@ public class IngredientResponseDto {
         this.unit = ingredient.getUnit();
         this.storage = ingredient.getStorage();
         this.purchaseDate = ingredient.getPurchaseDate();
+        this.fridgeId = ingredient.getFridge() != null ? ingredient.getFridge().getId() : null;
+        this.addedBy = ingredient.getUser() != null ? ingredient.getUser().getUsername() : null;
     }
 }

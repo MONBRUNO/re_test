@@ -34,6 +34,13 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    // 이메일 인증 여부. 가입 직후 false → 인증 메일 클릭 시 true.
+    // 로컬 가입자에게만 의미 있고, OAuth 가입자는 자동 true(이미 OAuth 제공자가 검증).
+    // columnDefinition: 기존 row에 default false 자동 적용 (마이그레이션 시 NOT NULL 위반 방지).
+    @Setter
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean emailVerified = false;
+
     private String activityLevel;
 
     private String dietGoal;

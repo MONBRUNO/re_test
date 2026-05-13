@@ -13,6 +13,10 @@ public enum Category {
     GRAIN("곡물"),
     SEAFOOD("해산물"),
     FRUIT("과일"),
+    PROCESSED("가공식품"),
+    BEVERAGE("음료"),
+    CONDIMENT("조미료"),
+    SNACK("간식"),
     ETC("기타");
 
     private final String label;

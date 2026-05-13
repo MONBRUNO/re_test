@@ -18,7 +18,13 @@ public class Ingredient {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user; // 이 식재료의 주인!
+    private User user; // 등록한 사람
+
+    // 어느 냉장고에 속한 식재료인지. 가족 공유 시 같은 fridge_id를 가진 멤버들이 함께 본다.
+    // 마이그레이션 직후엔 null인 row가 있을 수 있어 일단 nullable로 두고, 마이그레이션 끝나면 채워짐.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fridge_id")
+    private Fridge fridge;
 
     @Column(nullable = false)
     private String name; // 식재료 이름 (예: 계란)

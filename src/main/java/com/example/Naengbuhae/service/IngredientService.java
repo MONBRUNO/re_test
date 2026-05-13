@@ -1,12 +1,17 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.Fridge;
+import com.example.Naengbuhae.domain.FridgeMember;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
+import com.example.Naengbuhae.user.UserService;
 import com.example.Naengbuhae.util.AllergyMatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,29 +32,80 @@ public class IngredientService {
 
     private final IngredientRepository ingredientRepository;
     private final UserRepository userRepository;
+    private final FridgeRepository fridgeRepository;
+    private final FridgeMemberRepository fridgeMemberRepository;
 
-    // 1. 저장 — 응답에 allergyWarnings 채워서 등록 직후 사용자가 알레르기 매칭을 알 수 있게.
-    //    (이전엔 Long ID만 반환 → 알레르기 경고를 표시할 수 없었음)
+    // === 헬퍼: 요청 시 활성 냉장고 결정 ===
+    // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고(=기본 냉장고).
+    // 어느 쪽이든 사용자가 멤버여야 한다.
+    // 사용자에게 냉장고가 하나도 없으면(신규 가입 / 마이그레이션 누락) 자동으로 "내 냉장고" 생성.
+    private Fridge resolveFridge(User user, Long fridgeId) {
+        if (fridgeId != null) {
+            Fridge fridge = fridgeRepository.findById(fridgeId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 냉장고가 없습니다. id=" + fridgeId));
+            if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
+                throw new IllegalArgumentException("이 냉장고에 접근 권한이 없습니다.");
+            }
+            return fridge;
+        }
+        return fridgeRepository.findAllForMember(user).stream().findFirst()
+                .orElseGet(() -> ensureDefaultFridge(user));
+    }
+
+    // 기본 냉장고 자동 생성 (안전망). 이름은 "<사용자이름>의 냉장고".
+    private Fridge ensureDefaultFridge(User user) {
+        Fridge fridge = fridgeRepository.save(new Fridge(user, UserService.defaultFridgeName(user)));
+        fridgeMemberRepository.save(new FridgeMember(fridge, user));
+        return fridge;
+    }
+
+    // === 헬퍼: 특정 식재료에 사용자가 접근 권한이 있는지(=그 냉장고 멤버인지) ===
+    private void assertMember(Ingredient ingredient, User user) {
+        Fridge fridge = ingredient.getFridge();
+        if (fridge == null) {
+            // 마이그레이션 누락 케이스: 본인이 추가한 식재료만 본인이 접근 가능
+            if (!ingredient.getUser().getUsername().equals(user.getUsername())) {
+                throw new IllegalArgumentException("이 식재료에 접근 권한이 없습니다.");
+            }
+            return;
+        }
+        if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
+            throw new IllegalArgumentException("이 식재료에 접근 권한이 없습니다.");
+        }
+    }
+
+    // 1. 저장 — 사용자가 멤버인 냉장고에 추가. fridgeId 없으면 기본 냉장고.
     @Transactional
     public IngredientResponseDto saveIngredient(IngredientRequestDto requestDto, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
-        Ingredient saved = ingredientRepository.save(requestDto.toEntity(user));
+        Fridge fridge = resolveFridge(user, requestDto.getFridgeId());
+        Ingredient entity = requestDto.toEntity(user);
+        entity.setFridge(fridge);
+
+        Ingredient saved = ingredientRepository.save(entity);
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
         return toResponseWithAllergyWarnings(saved, allergens);
     }
 
-    // 2. 조회 — 특정 사용자의 식재료. 사용자 알레르기와 매칭된 키워드도 함께.
-    public List<IngredientResponseDto> findAllIngredients(String username) {
+    // 2. 조회 — 특정 냉장고의 식재료. fridgeId 안 주면 기본 냉장고.
+    //    가족 공유 시 같은 냉장고 멤버 모두 동일 결과 반환.
+    public List<IngredientResponseDto> findAllIngredients(String username, Long fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
+        Fridge fridge = resolveFridge(user, fridgeId);
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
 
-        return ingredientRepository.findByUser(user).stream()
+        return ingredientRepository.findByFridge(fridge).stream()
                 .map(ing -> toResponseWithAllergyWarnings(ing, allergens))
                 .collect(Collectors.toList());
+    }
+
+    // 기존 시그니처 호환용 (다른 서비스가 이미 쓰고 있을 수 있음)
+    public List<IngredientResponseDto> findAllIngredients(String username) {
+        return findAllIngredients(username, null);
     }
 
     // 식재료 → DTO 변환 + 알레르기 매칭 결과 채움
@@ -63,28 +119,26 @@ public class IngredientService {
         return dto;
     }
 
-    // 3. 식재료 삭제 기능 (본인 확인 로직 추가)
+    // 3. 식재료 삭제 — 냉장고 멤버 누구나 가능 (공유 단위가 냉장고이므로).
     @Transactional
     public void deleteIngredient(Long id, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 식재료가 없습니다. id=" + id));
-        
-        if (!ingredient.getUser().getUsername().equals(username)) {
-            throw new IllegalArgumentException("본인의 식재료만 삭제할 수 있습니다.");
-        }
-
+        assertMember(ingredient, user);
         ingredientRepository.delete(ingredient);
     }
 
-    // 4. 식재료 수정 기능 (본인 확인 로직 추가)
+    // 4. 식재료 수정 — 냉장고 멤버 누구나 가능.
+    //    fridgeId가 dto에 명시되면 다른 냉장고로 이동도 허용 (대상 냉장고도 멤버여야 함).
     @Transactional
     public Long updateIngredient(Long id, IngredientRequestDto requestDto, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 식재료가 없습니다. id=" + id));
-
-        if (!ingredient.getUser().getUsername().equals(username)) {
-            throw new IllegalArgumentException("본인의 식재료만 수정할 수 있습니다.");
-        }
+        assertMember(ingredient, user);
 
         ingredient.setName(requestDto.getName());
         ingredient.setQuantity(requestDto.getQuantity());
@@ -94,6 +148,13 @@ public class IngredientService {
         ingredient.setStorage(requestDto.getStorage());
         ingredient.setPurchaseDate(requestDto.getPurchaseDate());
 
+        // 냉장고 이동 (다른 냉장고로 옮기기). null이면 유지.
+        if (requestDto.getFridgeId() != null &&
+                (ingredient.getFridge() == null || !requestDto.getFridgeId().equals(ingredient.getFridge().getId()))) {
+            Fridge target = resolveFridge(user, requestDto.getFridgeId());
+            ingredient.setFridge(target);
+        }
+
         return ingredient.getId();
     }
 
@@ -101,21 +162,25 @@ public class IngredientService {
         return ingredientRepository.count();
     }
 
-    // 5. 유통기한 임박 식재료 조회 (만료된 것 포함, 임박순 정렬)
-    //   days 파라미터: N일 이내(만료 포함). 예) days=3 → 만료된 것 + 3일 이내 만료될 것
-    public List<ExpiringIngredientResponseDto> findExpiring(String username, int days) {
+    // 5. 유통기한 임박 식재료 — 특정 냉장고(또는 기본) 기준.
+    public List<ExpiringIngredientResponseDto> findExpiring(String username, int days, Long fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
+        Fridge fridge = resolveFridge(user, fridgeId);
 
         LocalDate today = LocalDate.now();
         LocalDate threshold = today.plusDays(days);
 
-        return ingredientRepository.findByUser(user).stream()
+        return ingredientRepository.findByFridge(fridge).stream()
                 .filter(ing -> ing.getExpirationDate() != null)
-                // 임계일자 이전 또는 같음 (오늘 만료된 것 + N일 이내 만료될 것 + 이미 만료된 것)
                 .filter(ing -> !ing.getExpirationDate().isAfter(threshold))
                 .sorted(Comparator.comparing(Ingredient::getExpirationDate))
                 .map(ing -> new ExpiringIngredientResponseDto(ing, today))
                 .collect(Collectors.toList());
+    }
+
+    // 기존 시그니처 호환용
+    public List<ExpiringIngredientResponseDto> findExpiring(String username, int days) {
+        return findExpiring(username, days, null);
     }
 }

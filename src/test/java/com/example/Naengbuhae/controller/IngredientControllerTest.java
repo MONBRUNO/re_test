@@ -85,7 +85,7 @@ class IngredientControllerTest {
         when(a.getName()).thenReturn("우유");
         IngredientResponseDto b = org.mockito.Mockito.mock(IngredientResponseDto.class);
         when(b.getName()).thenReturn("계란");
-        when(ingredientService.findAllIngredients("alice")).thenReturn(List.of(a, b));
+        when(ingredientService.findAllIngredients("alice", null)).thenReturn(List.of(a, b));
 
         mockMvc.perform(get("/api/ingredients").principal(alice))
                 .andExpect(status().isOk())
@@ -96,29 +96,29 @@ class IngredientControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/ingredients/expiring (default days=3) → findExpiring(alice, 3) 호출")
+    @DisplayName("GET /api/ingredients/expiring (default days=3) → findExpiring(alice, 3, null) 호출")
     void expiringDefault() throws Exception {
-        when(ingredientService.findExpiring("alice", 3)).thenReturn(List.of());
+        when(ingredientService.findExpiring("alice", 3, null)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/ingredients/expiring").principal(alice))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
 
-        verify(ingredientService).findExpiring("alice", 3);
+        verify(ingredientService).findExpiring("alice", 3, null);
     }
 
     @Test
-    @DisplayName("GET /api/ingredients/expiring?days=7 → findExpiring(alice, 7) 호출")
+    @DisplayName("GET /api/ingredients/expiring?days=7 → findExpiring(alice, 7, null) 호출")
     void expiringExplicitDays() throws Exception {
         ExpiringIngredientResponseDto dto = org.mockito.Mockito.mock(ExpiringIngredientResponseDto.class);
         when(dto.getName()).thenReturn("우유");
-        when(ingredientService.findExpiring("alice", 7)).thenReturn(List.of(dto));
+        when(ingredientService.findExpiring("alice", 7, null)).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/ingredients/expiring?days=7").principal(alice))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("우유"));
 
-        verify(ingredientService).findExpiring("alice", 7);
+        verify(ingredientService).findExpiring("alice", 7, null);
     }
 
     @Test

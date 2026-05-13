@@ -1,9 +1,14 @@
 package com.example.Naengbuhae.config;
 
+import com.example.Naengbuhae.domain.Fridge;
+import com.example.Naengbuhae.domain.FridgeMember;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.user.OAuthProvider;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
 import com.example.Naengbuhae.user.UserRole;
+import com.example.Naengbuhae.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -27,6 +32,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FridgeRepository fridgeRepository;
+    private final FridgeMemberRepository fridgeMemberRepository;
 
     @Override
     @Transactional
@@ -80,10 +87,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         );
         // 제공자가 알려준 성별/생년월일이 있으면 prefill (네이버는 동의 항목에 따라 제공)
         user.prefillFromOAuth(info.getGender(), info.getBirthDate());
-        userRepository.save(user);
+        // OAuth 가입자는 이미 제공자가 이메일 검증했으므로 인증 메일 안 보내고 바로 verified.
+        user.setEmailVerified(true);
+        User savedUser = userRepository.save(user);
+
+        // 신규 OAuth 가입자에게도 "<이름>의 냉장고" 자동 생성
+        Fridge defaultFridge = fridgeRepository.save(
+                new Fridge(savedUser, UserService.defaultFridgeName(savedUser)));
+        fridgeMemberRepository.save(new FridgeMember(defaultFridge, savedUser));
+
         log.info("[OAuth] 신규 사용자 가입: {} ({}) — gender={}, birthDate={}",
                 info.getEmail(), info.getProvider(), info.getGender(), info.getBirthDate());
-        return user;
+        return savedUser;
     }
 
     // SuccessHandler에서 사용자 정보를 다시 꺼낼 때 쓸 키

@@ -1,5 +1,9 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.domain.Fridge;
+import com.example.Naengbuhae.domain.FridgeMember;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
@@ -24,6 +28,9 @@ public class UserService {
     private final ShoppingItemRepository shoppingItemRepository;
     private final RefreshTokenService refreshTokenService;
     private final KakaoUnlinkClient kakaoUnlinkClient;
+    private final FridgeRepository fridgeRepository;
+    private final FridgeMemberRepository fridgeMemberRepository;
+    private final EmailAuthService emailAuthService;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -124,8 +131,25 @@ public class UserService {
         user.setRecommendedCalories(calculatedCalories);
 
         // 4. DB에 최종 저장
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // 5. 신규 가입자에게 "<이름>의 냉장고" 자동 생성 — 친구 초대 시 누구 냉장고인지 식별 쉽게.
+        //    여러 냉장고 관리(김치냉장고 등)는 사용자가 원할 때 추가.
+        Fridge defaultFridge = fridgeRepository.save(new Fridge(savedUser, defaultFridgeName(savedUser)));
+        fridgeMemberRepository.save(new FridgeMember(defaultFridge, savedUser));
+
+        // 6. 이메일 인증 메일 발송. 실패해도 가입 자체는 성공 처리 (마이페이지에서 재발송 가능).
+        emailAuthService.sendVerificationEmail(savedUser);
+
         return "회원가입 성공";
+    }
+
+    // 회원 이름 기반 기본 냉장고 이름. 가족 공유 시 누구 냉장고인지 식별 쉽게.
+    // 이름이 비어있으면 fallback으로 "내 냉장고".
+    public static String defaultFridgeName(User user) {
+        String name = user == null ? null : user.getName();
+        if (name == null || name.isBlank()) return "내 냉장고";
+        return name + "의 냉장고";
     }
 
     public User login(String username, String password) {

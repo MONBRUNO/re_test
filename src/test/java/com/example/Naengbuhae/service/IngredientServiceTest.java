@@ -1,11 +1,14 @@
 package com.example.Naengbuhae.service;
 
 import com.example.Naengbuhae.domain.Category;
+import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.Storage;
 import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
@@ -35,17 +38,25 @@ class IngredientServiceTest {
     IngredientRepository ingredientRepository;
     @Mock
     UserRepository userRepository;
+    @Mock
+    FridgeRepository fridgeRepository;
+    @Mock
+    FridgeMemberRepository fridgeMemberRepository;
 
     @InjectMocks
     IngredientService service;
 
     User user;
+    Fridge fridge;
 
     @BeforeEach
     void setUp() {
         user = mock(User.class);
+        fridge = mock(Fridge.class);
         lenient().when(user.getAllergies()).thenReturn(null);
         lenient().when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        // 사용자에게 기본 냉장고 1개가 있다고 가정 (Phase A 마이그레이션 후 상태)
+        lenient().when(fridgeRepository.findAllForMember(user)).thenReturn(List.of(fridge));
     }
 
     @Nested
@@ -106,7 +117,7 @@ class IngredientServiceTest {
         @DisplayName("각 식재료에 알레르기 매칭 키워드 첨부")
         void allergyWarningsPerItem() {
             when(user.getAllergies()).thenReturn("땅콩, 우유");
-            when(ingredientRepository.findByUser(user)).thenReturn(List.of(
+            when(ingredientRepository.findByFridge(fridge)).thenReturn(List.of(
                     ingredient("땅콩잼"),
                     ingredient("우유"),
                     ingredient("토마토")
@@ -130,7 +141,7 @@ class IngredientServiceTest {
         @DisplayName("days 이내 임박 + 만료된 것 모두 포함, 임박순 정렬")
         void includesExpiredAndUpcoming() {
             LocalDate today = LocalDate.now();
-            when(ingredientRepository.findByUser(user)).thenReturn(List.of(
+            when(ingredientRepository.findByFridge(fridge)).thenReturn(List.of(
                     ingredient("어제만료", today.minusDays(1)),       // 만료
                     ingredient("오늘만료", today),                     // 오늘
                     ingredient("3일후", today.plusDays(3)),            // 임박

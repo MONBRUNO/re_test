@@ -44,6 +44,7 @@ class UserControllerTest {
 
     @MockBean UserService userService;
     @MockBean RefreshTokenService refreshTokenService;
+    @MockBean EmailAuthService emailAuthService;
 
     // SecurityConfig 빈 그래프용
     @MockBean JwtUtil jwtUtil;

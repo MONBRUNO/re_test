@@ -56,6 +56,9 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/user/token/refresh", // access 만료 후에도 호출 가능해야 함
                                 "/user/logout",        // 만료된 access로도 refresh 폐기 가능해야 함
+                                "/user/verify-email",  // 메일 링크에서 호출 — 미로그인 상태 가능
+                                "/user/password/forgot", // 비번 찾기 — 미로그인
+                                "/user/password/reset",  // 토큰으로 비번 재설정 — 미로그인
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",

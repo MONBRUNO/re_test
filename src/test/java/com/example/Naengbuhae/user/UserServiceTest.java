@@ -1,5 +1,8 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.domain.Fridge;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
@@ -35,8 +38,18 @@ class UserServiceTest {
     @Mock ShoppingItemRepository shoppingItemRepository;
     @Mock RefreshTokenService refreshTokenService;
     @Mock KakaoUnlinkClient kakaoUnlinkClient;
+    @Mock FridgeRepository fridgeRepository;
+    @Mock FridgeMemberRepository fridgeMemberRepository;
+    @Mock EmailAuthService emailAuthService;
 
     @InjectMocks UserService service;
+
+    @BeforeEach
+    void setUp() {
+        // signup 성공 시 fridge 생성 stub — 새 사용자에게 "내 냉장고" 자동 부여
+        lenient().when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(fridgeRepository.save(any(Fridge.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @Nested
     @DisplayName("signup")

@@ -49,7 +49,11 @@ public class IngredientRequestDto {
     @JsonFormat(pattern = "yyyy-MM-dd") // ✅ 추가: 날짜 형식 엇갈림 방어
     private LocalDate purchaseDate;
 
+    // 어느 냉장고에 추가할지. 없으면 서비스 계층에서 사용자의 기본 냉장고로 자동 선택.
+    private Long fridgeId;
+
     // 편의 기능: "이 택배 상자(DTO)에 든 내용물을 실제 DB용 식재료(Entity)로 변환해 줘!"
+    // 식재료는 user(추가한 사람)와 fridge(소속 냉장고)를 모두 가짐. fridge는 서비스에서 주입.
     public Ingredient toEntity(User user) {
         return new Ingredient(user, name, quantity, expirationDate, category, unit, storage, purchaseDate);
     }
