@@ -54,9 +54,9 @@ public class RecipeController {
         return id + "번 레시피가 삭제되었습니다! 🗑️";
     }
 
-    // ✨ AI 레시피 추천 API 엔드포인트
+    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천
     @GetMapping("/ai-recommendations")
-    public AiRecipeResponseDto getAiRecommend(Principal principal) {
+    public AiRecipeResponseDto getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
     }
 }
