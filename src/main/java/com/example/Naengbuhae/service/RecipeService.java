@@ -54,7 +54,7 @@ public class RecipeService {
 
         return recipeRepository.findByUser(user).stream()
                 .map(recipe -> toResponseWithAllergyWarnings(recipe, allergens))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // 3. 레시피 수정 (권한 체크 + 모든 필드 갱신)

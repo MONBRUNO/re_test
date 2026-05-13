@@ -46,7 +46,7 @@ public class ShoppingItemService {
 
         return shoppingItemRepository.findByUser(user).stream()
                 .map(ShoppingItemResponseDto::new)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // 3. 구매 완료 체크 토글 (true <-> false)

@@ -45,7 +45,7 @@ public class AiRecipeService {
 
         List<String> myIngredients = ingredientRepository.findByUser(user).stream()
                 .map(Ingredient::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         if (myIngredients.isEmpty()) {
             throw new IllegalArgumentException("냉장고가 비어있어 AI 추천을 받을 수 없습니다. 식재료를 먼저 추가해주세요!");

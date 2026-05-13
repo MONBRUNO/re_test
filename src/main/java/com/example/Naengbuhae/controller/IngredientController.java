@@ -4,6 +4,7 @@ import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.service.IngredientService;
+import com.example.Naengbuhae.user.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -43,9 +44,9 @@ public class IngredientController {
 
     // DELETE: 내 식재료만 삭제 가능하도록 수정
     @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id, Principal principal) {
+    public ApiResponse delete(@PathVariable Long id, Principal principal) {
         ingredientService.deleteIngredient(id, principal.getName());
-        return id + "번 식재료가 삭제되었습니다!";
+        return new ApiResponse(true, id + "번 식재료가 삭제되었습니다!");
     }
 
     // PUT: 내 식재료만 수정 가능하도록 수정

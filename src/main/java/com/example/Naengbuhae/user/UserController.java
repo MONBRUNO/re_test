@@ -21,14 +21,8 @@ public class UserController {
     @PostMapping("/signup")
     // @Valid 어노테이션 추가로 SignupRequest DTO의 제약조건 발동
     public ApiResponse signup(@Valid @RequestBody SignupRequest request) {
-
-        String result = userService.signup(request);
-
-        if (result.equals("회원가입 성공")) {
-            return new ApiResponse(true, result);
-        } else {
-            return new ApiResponse(false, result);
-        }
+        userService.signup(request);
+        return new ApiResponse(true, "회원가입 성공");
     }
 
     @PostMapping("/login")

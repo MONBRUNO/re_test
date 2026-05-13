@@ -22,15 +22,14 @@ import java.util.Map;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -57,7 +56,8 @@ class UserControllerTest {
     @Test
     @DisplayName("POST /user/signup 성공 → ApiResponse(success: true, message: 회원가입 성공)")
     void signupSuccess() throws Exception {
-        when(userService.signup(any())).thenReturn("회원가입 성공");
+        // void 반환 타입은 doNothing()으로 모킹
+        doNothing().when(userService).signup(any());
 
         mockMvc.perform(post("/user/signup")
                         .content(mapper.writeValueAsString(validSignup()))
@@ -68,14 +68,16 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("POST /user/signup 실패 (중복 등) → ApiResponse(success: false, 서비스 메시지)")
+    @DisplayName("POST /user/signup 실패 (중복 등) → 400 Bad Request + success: false")
     void signupBusinessFailure() throws Exception {
-        when(userService.signup(any())).thenReturn("이미 존재하는 아이디입니다.");
+        // 비즈니스 예외 발생 시나리오
+        doThrow(new IllegalArgumentException("이미 존재하는 아이디입니다."))
+                .when(userService).signup(any());
 
         mockMvc.perform(post("/user/signup")
                         .content(mapper.writeValueAsString(validSignup()))
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()) // 비즈니스 실패는 200 + success:false (기존 컨벤션)
+                .andExpect(status().isBadRequest()) // 예외 처리기에 의해 400 반환
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message", containsString("이미 존재")));
     }

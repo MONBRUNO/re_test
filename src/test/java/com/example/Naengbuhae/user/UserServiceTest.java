@@ -6,7 +6,6 @@ import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDate;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -56,29 +55,31 @@ class UserServiceTest {
     class Signup {
 
         @Test
-        @DisplayName("아이디 중복 → '이미 존재하는 아이디입니다.' 반환, save 호출 안 됨")
+        @DisplayName("아이디 중복 → IllegalArgumentException 발생, save 호출 안 됨")
         void duplicateUsername() {
             SignupRequest req = validRequest();
             when(userRepository.findByUsername(req.getUsername()))
                     .thenReturn(Optional.of(mock(User.class)));
 
-            String result = service.signup(req);
-
-            assertThat(result).isEqualTo("이미 존재하는 아이디입니다.");
+            assertThatThrownBy(() -> service.signup(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("이미 존재하는 아이디입니다.");
+            
             verify(userRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("이메일 중복 → '이미 사용 중인 이메일입니다.'")
+        @DisplayName("이메일 중복 → IllegalArgumentException 발생")
         void duplicateEmail() {
             SignupRequest req = validRequest();
             when(userRepository.findByUsername(req.getUsername())).thenReturn(Optional.empty());
             when(userRepository.findByEmail(req.getEmail()))
                     .thenReturn(Optional.of(mock(User.class)));
 
-            String result = service.signup(req);
-
-            assertThat(result).isEqualTo("이미 사용 중인 이메일입니다.");
+            assertThatThrownBy(() -> service.signup(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("이미 사용 중인 이메일입니다.");
+            
             verify(userRepository, never()).save(any());
         }
 
@@ -90,9 +91,10 @@ class UserServiceTest {
             when(userRepository.findByUsername(req.getUsername())).thenReturn(Optional.empty());
             when(userRepository.findByEmail(req.getEmail())).thenReturn(Optional.empty());
 
-            String result = service.signup(req);
-
-            assertThat(result).contains("한글");
+            assertThatThrownBy(() -> service.signup(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("한글");
+            
             verify(userRepository, never()).save(any());
         }
 
@@ -104,23 +106,23 @@ class UserServiceTest {
             when(userRepository.findByUsername(req.getUsername())).thenReturn(Optional.empty());
             when(userRepository.findByEmail(req.getEmail())).thenReturn(Optional.empty());
 
-            String result = service.signup(req);
-
-            assertThat(result).contains("8자 이상");
+            assertThatThrownBy(() -> service.signup(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("8자 이상");
+            
             verify(userRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("정상 가입 → '회원가입 성공' + save 호출 (인코딩된 비번)")
+        @DisplayName("정상 가입 → 예외 없이 종료 + save 호출 (인코딩된 비번)")
         void successfulSignup() {
             SignupRequest req = validRequest();
             when(userRepository.findByUsername(req.getUsername())).thenReturn(Optional.empty());
             when(userRepository.findByEmail(req.getEmail())).thenReturn(Optional.empty());
             when(passwordEncoder.encode(req.getPassword())).thenReturn("ENCODED");
 
-            String result = service.signup(req);
-
-            assertThat(result).isEqualTo("회원가입 성공");
+            assertThatCode(() -> service.signup(req)).doesNotThrowAnyException();
+            
             verify(userRepository).save(any(User.class));
             verify(passwordEncoder).encode(req.getPassword());
         }
