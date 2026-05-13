@@ -2097,3 +2097,206 @@ DROP TABLE IF EXISTS recipe CASCADE;
 | GET | `/user/me` | 내 프로필 전체 조회 (응답 형식 변경) |
 | PUT | `/user/me` | 내 프로필 수정 + 권장 칼로리 재계산 |
 
+---
+
+## 🆕 2026-05-13 작업
+
+큰 줄기 네 가지: **AI 사진 인식**, **카테고리 확장**, **다중 냉장고(가족 공유)**, **이메일 인프라(인증/비번 재설정)**.
+
+### 1) AI 사진 인식 — Gemini Vision
+
+식재료 단건 사진 한 장 또는 영수증 한 장을 받아 자동으로 이름/카테고리/보관/수량/유통기한을 추출하는 엔드포인트 추가.
+
+- `service/IngredientRecognitionService.java` (신규) — Google Gemini API 클라이언트
+  - 모델: `gemini-2.5-flash`
+  - `responseSchema`로 structured output 강제 → 파싱 실패 거의 없음
+  - 두 메서드:
+    - `recognize(MultipartFile)` — 단일 식재료
+    - `recognizeReceipt(MultipartFile)` — 영수증에서 여러 항목 추출
+  - 응답 스키마: `name, category, storage, quantity, unit, expiryDaysByStorage`
+    - `expiryDaysByStorage`는 `Map<냉장|냉동|실온, int>` — 같은 식재료라도 보관 방법별로 다른 유통기한
+  - 프롬프트는 "제조사 표시 유통기한 기준" — 보수적 안전수치가 아니라 실제 상품 표시 기준
+- `controller/IngredientRecognitionController.java` (신규)
+  - `POST /api/ingredients/recognize` (multipart, key=`image`)
+  - `POST /api/ingredients/recognize-receipt` (multipart, key=`image`)
+- `application.properties`에 추가
+  ```properties
+  gemini.api.key=${GEMINI_API_KEY:}
+  spring.servlet.multipart.max-file-size=10MB
+  spring.servlet.multipart.max-request-size=10MB
+  ```
+- **사진은 저장하지 않음**. 인식 후 즉시 폐기. `Ingredient` 엔티티에 `imageUrl` 필드 없음 (디스크 비용 + 프라이버시 양쪽)
+
+**알아둘 점**
+- `gemini-1.5-flash`는 deprecated. 반드시 `gemini-2.5-flash` 사용
+- API 키 없는 환경에선 빈 문자열로 떨어져 서비스가 503 응답 — 키 없이도 앱이 죽지는 않음
+
+---
+
+### 2) 카테고리 확장 — 7개 → 11개
+
+`PROCESSED("가공식품")`, `BEVERAGE("음료")`, `CONDIMENT("조미료")`, `SNACK("간식")` 추가.
+
+- `domain/Category.java` enum에 4개 값 추가
+- AI 인식 결과가 "기타"로 묻혀버리던 라면/즉석밥/우유/주스/간장 등이 제 카테고리로 떨어짐
+- 기존 데이터엔 영향 없음 (enum 추가는 비파괴)
+
+---
+
+### 3) 다중 냉장고 + 가족 공유
+
+식재료가 단일 사용자에게 묶이던 구조에서, **한 사용자가 여러 냉장고에 속하고 한 냉장고는 여러 사용자가 공유**하는 구조로.
+
+**엔티티 (`domain/`)**
+- `Fridge` — id, owner(User), name, createdAt
+- `FridgeMember` — N:M 매핑 (fridge ↔ user). 가입 시각 보관
+- `FridgeInvite` — 6자 코드, 만료시각(24h), used 플래그(현재는 사용 안 함)
+- `Ingredient` — `fridge_id` 컬럼 추가 (nullable로 마이그레이션 안전)
+
+**Repository (`repository/`)**
+- `FridgeRepository`, `FridgeMemberRepository`, `FridgeInviteRepository`
+
+**Service (`service/FridgeService.java`)**
+- 멤버 권한은 **모두 동등** — 오너 개념 없음. 누구나 초대 가능, 누구나 떠날 수 있음
+- `createInvite(fridgeId)` — 활성(만료 전) 코드가 있으면 그것을 재사용, 없으면 새로 생성
+- `joinByCode(code)` — 코드 유효성 검사 후 FridgeMember 추가. **코드는 24h 안에서 다회용**
+- `removeMember`, `leaveFridge`, `renameFridge`, `deleteFridge`
+- 모든 조회 메서드에서 `ensureMember()` 호출 — 멤버 아니면 403
+
+**Controller (`controller/FridgeController.java`)**
+- `/api/fridges` (목록/생성)
+- `/api/fridges/{id}` (조회/이름변경/삭제)
+- `/api/fridges/{id}/members` (멤버 목록/제거)
+- `/api/fridges/{id}/leave`
+- `/api/fridges/{id}/invites` (코드 발급)
+- `/api/fridges/join` (코드로 가입)
+
+**식재료 서비스 변경 (`IngredientService.java`)**
+- `resolveFridge()` 헬퍼 — request의 `fridgeId`가 있으면 그걸 쓰고, 없으면 사용자의 기본 냉장고로 폴백
+- `ensureMember()` — 모든 식재료 조회/수정/삭제 시 호출
+- `ensureDefaultFridge()` — 기본 냉장고가 없는 사용자에 대한 안전망
+- 모든 `find*`, `save`, `update`, `delete` 메서드가 fridgeId 기준으로 동작
+- `findExpiring(name, days)` → `findExpiring(name, days, fridgeId)` 시그니처 변경
+
+**기본 냉장고 자동 생성**
+- 신규 가입(`UserService.signup`): `<이름>의 냉장고` 자동 생성
+- OAuth 가입(`CustomOAuth2UserService`): 동일하게 자동 생성 + `emailVerified=true`
+- 유저 이름 비어있으면 폴백: `"내 냉장고"`
+- 헬퍼 `UserService.defaultFridgeName(user)` 추출 — 신규/OAuth 양쪽에서 동일하게 호출
+
+**마이그레이션 (`config/FridgeMigrationRunner.java`)**
+- `CommandLineRunner` 구현. 부팅 시 1회 실행.
+- 기본 냉장고 없는 모든 유저에게 자동 생성
+- 레거시 이름 `"내 냉장고"`를 `<이름>의 냉장고` 형식으로 일괄 rename
+- `fridge_id`가 null인 식재료를 해당 유저의 기본 냉장고로 이관
+
+**DTO 변경**
+- `IngredientRequestDto`에 `fridgeId` 추가 (nullable)
+- `IngredientResponseDto`에 `fridgeId`, `addedBy`(추가한 사람 이름) 추가
+
+**알아둘 점**
+- 초대 코드는 24h 안에선 누가 재발급 요청해도 같은 코드를 돌려준다. 즉 "재발급 = revoke"가 아님 — 의도된 정책
+- 사용자가 자기 자신을 제거하는 것도 가능 (`leaveFridge`와 동일하게 동작)
+- 마지막 멤버가 떠나는 냉장고는 자동 삭제하지 않음 (식재료가 orphan 되더라도 일단 유지)
+
+---
+
+### 4) 이메일 인프라 + 인증/비번 재설정
+
+Spring Boot Mail (Gmail SMTP) 도입. 인증 토큰 기반의 이메일 인증과 비밀번호 재설정.
+
+**build.gradle**
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-mail'
+```
+
+**`service/MailService.java` (신규)**
+- `JavaMailSender` 래퍼
+- `sendHtml(to, subject, html)` — HTML 메일 발송
+
+**`service/MailTemplates.java` (신규)**
+- 인라인 CSS HTML 템플릿 두 종 — verify / reset
+- 디자인 톤: 브랜드 컬러 `#CDFF00` 강조
+
+**`user/UserToken.java` (신규)**
+```java
+public enum Type { EMAIL_VERIFY, PASSWORD_RESET }
+
+@Entity
+public class UserToken {
+    Long id;
+    User user;
+    String token;        // UUID
+    Type type;
+    LocalDateTime expiresAt;
+    LocalDateTime usedAt; // 사용 후 기록 → 재사용 방지
+}
+```
+- 두 종류 토큰을 **하나의 테이블**로 관리. 단순화 + 같은 invalidate 로직 재사용
+
+**`user/UserTokenRepository.java`**
+- `findByTokenAndType` — 검증
+- `invalidateOlder(user, type)` — 같은 사용자의 같은 타입 미사용 토큰을 일괄 만료시킴. 재발급 시 호출
+
+**`user/EmailAuthService.java` (신규)**
+- `sendVerificationEmail(user)` — 가입 직후 자동 호출
+- `verifyEmail(token)` — 토큰 검증 + `User.emailVerified=true`
+- `resendVerificationEmail(user)` — 기존 토큰 invalidate 후 새로 발송
+- `requestPasswordReset(email)` — 존재 안 하는 이메일에도 동일 응답 (user enumeration 방지)
+- `resetPassword(token, newPassword)` — 토큰 검증 + 비번 업데이트
+
+**`user/User.java`**
+- `emailVerified` boolean 컬럼 추가
+- `columnDefinition = "boolean default false"` — 기존 row가 있을 때 NOT NULL 위반 방지
+
+**`user/UserController.java` 추가 엔드포인트**
+- `POST /user/verify-email?token=...`
+- `POST /user/resend-verification` (인증된 사용자만)
+- `POST /user/password/forgot` (body: `{email}`)
+- `POST /user/password/reset` (body: `{token, newPassword}`)
+
+**`config/SecurityConfig.java`**
+- 위 네 엔드포인트 모두 `permitAll` — 비로그인 상태에서도 호출 가능해야 함
+
+**`application.properties` 추가**
+```properties
+# Gmail SMTP
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME:}
+spring.mail.password=${MAIL_APP_PASSWORD:}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# 이메일 본문의 링크가 가리킬 웹 URL (개발: localhost, 운영: 실제 도메인)
+app.mail.web-base-url=${MAIL_WEB_BASE_URL:http://localhost:5173}
+```
+
+**알아둘 점**
+- Gmail 앱 비밀번호 필요 (일반 비밀번호 X). 2FA 활성화 후 발급
+- 이메일 인증은 **현재 옵트인** — 인증 안 한 유저도 로그인은 됨. 단, 비밀번호 찾기를 못 쓰게 됨(이메일이 없으니 못 보냄). 강제 여부는 운영 단계에서 재논의
+- OAuth 유저는 가입 시점에 자동으로 `emailVerified=true` (이미 provider가 검증한 것이므로)
+
+---
+
+## 📋 2026-05-13 추가 엔드포인트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/api/ingredients/recognize` | 사진 1장 → 식재료 정보 1건 (Gemini Vision) |
+| POST | `/api/ingredients/recognize-receipt` | 영수증 사진 → 식재료 정보 N건 |
+| GET | `/api/fridges` | 내가 속한 냉장고 목록 |
+| POST | `/api/fridges` | 냉장고 생성 |
+| GET | `/api/fridges/{id}` | 냉장고 상세 |
+| PATCH | `/api/fridges/{id}` | 냉장고 이름 변경 |
+| DELETE | `/api/fridges/{id}` | 냉장고 삭제 |
+| GET | `/api/fridges/{id}/members` | 멤버 목록 |
+| DELETE | `/api/fridges/{id}/members/{userId}` | 멤버 제거 |
+| POST | `/api/fridges/{id}/leave` | 본인 나가기 |
+| POST | `/api/fridges/{id}/invites` | 초대 코드 발급/재사용 |
+| POST | `/api/fridges/join` | 코드로 가입 |
+| POST | `/user/verify-email` | 이메일 인증 토큰 사용 |
+| POST | `/user/resend-verification` | 인증 메일 재발송 |
+| POST | `/user/password/forgot` | 비번 재설정 메일 요청 |
+| POST | `/user/password/reset` | 비번 재설정 토큰 사용 |
+
