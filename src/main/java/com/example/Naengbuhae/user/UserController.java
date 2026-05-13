@@ -95,25 +95,17 @@ public class UserController {
     public ApiResponse verifyEmail(@RequestBody Map<String, String> body) {
         String token = body.get("token");
         if (token == null || token.isBlank()) {
-            return new ApiResponse(false, "토큰이 필요합니다.");
+            throw new IllegalArgumentException("토큰이 필요합니다.");
         }
-        try {
-            String name = emailAuthService.verifyEmail(token);
-            return new ApiResponse(true, name + "님, 이메일 인증이 완료되었습니다.");
-        } catch (IllegalArgumentException e) {
-            return new ApiResponse(false, e.getMessage());
-        }
+        String name = emailAuthService.verifyEmail(token);
+        return new ApiResponse(true, name + "님, 이메일 인증이 완료되었습니다.");
     }
 
     // 마이페이지에서 인증 메일 재발송 (로그인 필요).
     @PostMapping("/resend-verification")
     public ApiResponse resendVerification(Principal principal) {
-        try {
-            emailAuthService.resendVerificationEmail(principal.getName());
-            return new ApiResponse(true, "인증 메일을 재발송했습니다.");
-        } catch (IllegalArgumentException e) {
-            return new ApiResponse(false, e.getMessage());
-        }
+        emailAuthService.resendVerificationEmail(principal.getName());
+        return new ApiResponse(true, "인증 메일을 재발송했습니다.");
     }
 
     // === 비밀번호 찾기/재설정 ===
@@ -121,22 +113,14 @@ public class UserController {
     // 비번 찾기: 이메일 입력 → 재설정 메일 발송. 존재 여부와 무관하게 같은 응답(보안).
     @PostMapping("/password/forgot")
     public ApiResponse forgotPassword(@RequestBody Map<String, String> body) {
-        try {
-            emailAuthService.requestPasswordReset(body.get("email"));
-        } catch (IllegalArgumentException e) {
-            return new ApiResponse(false, e.getMessage());
-        }
+        emailAuthService.requestPasswordReset(body.get("email"));
         return new ApiResponse(true, "재설정 안내 메일을 보냈습니다. 메일함을 확인해주세요.");
     }
 
     // 재설정 페이지에서 토큰 + 새 비번.
     @PostMapping("/password/reset")
     public ApiResponse resetPassword(@RequestBody Map<String, String> body) {
-        try {
-            emailAuthService.resetPassword(body.get("token"), body.get("newPassword"));
-            return new ApiResponse(true, "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.");
-        } catch (IllegalArgumentException e) {
-            return new ApiResponse(false, e.getMessage());
-        }
+        emailAuthService.resetPassword(body.get("token"), body.get("newPassword"));
+        return new ApiResponse(true, "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.");
     }
 }

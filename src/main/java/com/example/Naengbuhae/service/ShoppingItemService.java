@@ -111,7 +111,7 @@ public class ShoppingItemService {
                     Storage.REFRIGERATED,
                     LocalDate.now()
             );
-        }).collect(Collectors.toList());
+        }).toList();
         // 4. 변환된 식재료들을 내 냉장고 DB에 한 방에 쾅! 저장
         ingredientRepository.saveAll(ingredientsToSave);
 

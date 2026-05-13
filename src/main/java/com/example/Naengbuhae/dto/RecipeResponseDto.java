@@ -42,6 +42,6 @@ public class RecipeResponseDto {
         this.username = recipe.getUser().getUsername();
         this.ingredients = recipe.getIngredients().stream()
                 .map(RecipeIngredientDto::new)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

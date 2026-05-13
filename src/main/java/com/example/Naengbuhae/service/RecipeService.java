@@ -182,7 +182,7 @@ public class RecipeService {
         if (!allergens.isEmpty()) {
             List<String> ingredientNames = recipe.getIngredients().stream()
                     .map(RecipeIngredient::getName)
-                    .collect(Collectors.toList());
+                    .toList();
             dto.setAllergyWarnings(new ArrayList<>(AllergyMatcher.findMatches(allergens, ingredientNames)));
         }
         return dto;

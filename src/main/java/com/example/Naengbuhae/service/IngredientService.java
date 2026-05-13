@@ -100,7 +100,7 @@ public class IngredientService {
 
         return ingredientRepository.findByFridge(fridge).stream()
                 .map(ing -> toResponseWithAllergyWarnings(ing, allergens))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // 기존 시그니처 호환용 (다른 서비스가 이미 쓰고 있을 수 있음)

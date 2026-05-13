@@ -42,7 +42,7 @@ public class FridgeService {
         User user = findUser(username);
         return fridgeRepository.findAllForMember(user).stream()
                 .map(f -> toDto(f, user))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public FridgeResponseDto getFridge(Long fridgeId, String username) {

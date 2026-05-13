@@ -100,7 +100,7 @@ public class SecurityConfig {
         List<String> parsedOrigins = Arrays.stream(allowedOriginsString.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
-                .collect(Collectors.toList());
+                .toList();
 
         // Wildcard 패턴(예: http://localhost:*) 지원을 위해 setAllowedOriginPatterns 사용.
         // setAllowedOrigins는 정확 매칭만 가능하므로 와일드카드와 호환 안 됨.
