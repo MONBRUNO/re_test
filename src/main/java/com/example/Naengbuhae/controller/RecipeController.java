@@ -1,13 +1,11 @@
 package com.example.Naengbuhae.controller;
 
+import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
-// ✨ 새로 만든 DTO와 Service를 import!
-import com.example.Naengbuhae.dto.AiRecipeResponseDto;
-import com.example.Naengbuhae.service.RecipeService;
 import com.example.Naengbuhae.service.AiRecipeService;
-
+import com.example.Naengbuhae.service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
