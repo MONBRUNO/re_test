@@ -1,6 +1,8 @@
 package com.example.Naengbuhae.config;
 
 import com.example.Naengbuhae.util.ClientIpUtil;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
@@ -14,10 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-// 인증 엔드포인트의 IP당 호출 빈도를 제한. Bucket4j의 토큰 버킷 알고리즘.
-// 단일 인스턴스 메모리 기반 — 다중 인스턴스로 확장 시 Redis 등 분산 저장소 필요.
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -31,8 +30,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     .capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build()
     );
 
-    // (IP + path) → 해당 사용자/path 전용 bucket. 메모리 누수 방지를 위해 주기 정리는 추후 작업.
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    // ✨ 시니어급 방어막: 무한정 쌓이는 Map 대신 똑똑한 Caffeine Cache 도입!
+    private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
+            .maximumSize(10000) // 최대 1만 개의 IP+URI 조합만 기억 (메모리 터짐 방지)
+            .expireAfterAccess(Duration.ofMinutes(10)) // 10분 동안 다시 안 찌르면 메모리에서 자동 삭제!
+            .build();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -46,7 +48,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String ip = ClientIpUtil.getClientIp(request);
         String key = ip + ":" + request.getRequestURI();
-        Bucket bucket = buckets.computeIfAbsent(key, k -> Bucket.builder().addLimit(limit).build());
+        
+        // ✨ Caffeine Cache 문법으로 변경 (computeIfAbsent -> get)
+        Bucket bucket = buckets.get(key, k -> Bucket.builder().addLimit(limit).build());
 
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -33,10 +34,23 @@ public class AuditAspect {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         String clientIp = ClientIpUtil.getClientIp(request);
 
-        // 3. 대상 ID 가져오기 (컨트롤러의 첫 번째 파라미터를 타겟 ID로 간주)
+        // 3. 대상 ID 가져오기
         Long targetId = null;
+        String idParamName = auditAnnotation.idParamName();
         Object[] args = joinPoint.getArgs();
-        if (args.length > 0 && args[0] instanceof Long) {
+
+        if (!idParamName.isEmpty()) {
+            // ✨ 1. idParamName이 지정된 경우: 파라미터 이름으로 찾기
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            String[] parameterNames = signature.getParameterNames();
+            for (int i = 0; i < parameterNames.length; i++) {
+                if (parameterNames[i].equals(idParamName) && args[i] instanceof Long) {
+                    targetId = (Long) args[i];
+                    break;
+                }
+            }
+        } else if (args.length > 0 && args[0] instanceof Long) {
+            // 2. 지정 안 된 경우: 기존처럼 첫 번째 Long 인자 가져오기 (하위 호환)
             targetId = (Long) args[0];
         }
 

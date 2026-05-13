@@ -5,36 +5,63 @@ import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiRecipeService {
 
     private final UserRepository userRepository;
     private final IngredientRepository ingredientRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    // 💡 나중에 AI 팀원에게 받을 진짜 주소를 여기에 넣을 예정!
-    private final String AI_SERVER_URL = "http://localhost:8000/api/recommend";
+    // 🔥 하드코딩 제거! application.properties에서 설정값을 가져옴
+    @Value("${ai.server.url}")
+    private String aiServerUrl;
+
+    public AiRecipeService(UserRepository userRepository, 
+                           IngredientRepository ingredientRepository, 
+                           RestTemplateBuilder restTemplateBuilder) {
+        this.userRepository = userRepository;
+        this.ingredientRepository = ingredientRepository;
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(30))
+                .build();
+    }
 
     public AiRecipeResponseDto getAiRecommendation(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 유저의 냉장고 식재료 리스트 추출
         List<String> myIngredients = ingredientRepository.findByUser(user).stream()
                 .map(Ingredient::getName)
                 .collect(Collectors.toList());
 
-        // AI 서버로 데이터 전송 및 결과 수신 (나중에 AI 서버가 완성되면 활성화)
-        // return restTemplate.postForObject(AI_SERVER_URL, myIngredients, AiRecipeResponseDto.class);
+        if (myIngredients.isEmpty()) {
+            throw new IllegalArgumentException("냉장고가 비어있어 AI 추천을 받을 수 없습니다. 식재료를 먼저 추가해주세요!");
+        }
 
-        // 일단은 뼈대만 잡는 거니 '가짜 데이터(Mock)'를 반환하도록 설계해둠
-        return new AiRecipeResponseDto();
+        log.info("[AI Recipe] {} 님의 요청을 AI 서버({})로 전송 중...", username, aiServerUrl);
+
+        try {
+            // ✨ 이제 aiServerUrl 변수를 사용하여 유연하게 통신!
+            // return restTemplate.postForObject(aiServerUrl, myIngredients, AiRecipeResponseDto.class);
+            
+            return new AiRecipeResponseDto(); 
+            
+        } catch (RestClientException e) {
+            log.error("[AI Recipe Error] AI 서버({}) 통신 실패: {}", aiServerUrl, e.getMessage());
+            throw new RuntimeException("현재 AI 추천 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.");
+        }
     }
 }

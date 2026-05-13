@@ -11,4 +11,7 @@ public @interface Audit {
     String action();      // 예: "DELETE"
     String targetType();  // 예: "RECIPE"
     String description() default ""; // 커스텀 설명
+    
+    // ✨ 추가: 어떤 파라미터가 ID인지 이름을 명시 (예: "recipeId")
+    String idParamName() default ""; 
 }

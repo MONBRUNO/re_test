@@ -33,6 +33,9 @@ dependencies {
     // Rate limiting (Token Bucket 알고리즘)
     implementation 'com.bucket4j:bucket4j-core:8.10.1'
 
+    // ✨ 추가: 메모리 누수 방지용 로컬 캐시 (Caffeine)
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
     // Swagger (API 문서 제공 도구)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0'
 

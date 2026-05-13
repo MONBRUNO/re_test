@@ -1,13 +1,11 @@
 package com.example.Naengbuhae.controller;
 
+import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
-// ✨ 새로 만든 DTO와 Service를 import!
-import com.example.Naengbuhae.dto.AiRecipeResponseDto;
-import com.example.Naengbuhae.service.RecipeService;
 import com.example.Naengbuhae.service.AiRecipeService;
-
+import com.example.Naengbuhae.service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -54,9 +52,9 @@ public class RecipeController {
         return id + "번 레시피가 삭제되었습니다! 🗑️";
     }
 
-    // ✨ AI 레시피 추천 API 엔드포인트
+    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천
     @GetMapping("/ai-recommendations")
-    public AiRecipeResponseDto getAiRecommend(Principal principal) {
+    public AiRecipeResponseDto getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
     }
 }
