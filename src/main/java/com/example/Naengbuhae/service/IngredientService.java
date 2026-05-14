@@ -34,6 +34,7 @@ public class IngredientService {
     private final UserRepository userRepository;
     private final FridgeRepository fridgeRepository;
     private final FridgeMemberRepository fridgeMemberRepository;
+    private final FcmService fcmService;
 
     // === 헬퍼: 요청 시 활성 냉장고 결정 ===
     // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고(=기본 냉장고).
@@ -85,6 +86,13 @@ public class IngredientService {
         entity.setFridge(fridge);
 
         Ingredient saved = ingredientRepository.save(entity);
+
+        // 같은 냉장고 다른 멤버에게 알림 (혼자 쓰는 냉장고면 발송 대상 없음)
+        notifyOtherMembers(fridge, user,
+                "식재료가 추가됐어요",
+                user.getName() + "님이 '" + fridge.getName() + "'에 "
+                        + saved.getName() + " " + saved.getQuantity() + saved.getUnit() + "를(을) 넣었어요.");
+
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
         return toResponseWithAllergyWarnings(saved, allergens);
     }
@@ -127,7 +135,17 @@ public class IngredientService {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 식재료가 없습니다. id=" + id));
         assertMember(ingredient, user);
+
+        Fridge fridge = ingredient.getFridge();
+        String ingName = ingredient.getName();
         ingredientRepository.delete(ingredient);
+
+        // 공유 냉장고에서만 알림 — 마이그레이션 누락 케이스(fridge null)는 본인만 보유 중이므로 스킵
+        if (fridge != null) {
+            notifyOtherMembers(fridge, user,
+                    "식재료가 사라졌어요",
+                    user.getName() + "님이 '" + fridge.getName() + "'에서 " + ingName + "를(을) 비웠어요.");
+        }
     }
 
     // 4. 식재료 수정 — 냉장고 멤버 누구나 가능.
@@ -182,5 +200,16 @@ public class IngredientService {
     // 기존 시그니처 호환용
     public List<ExpiringIngredientResponseDto> findExpiring(String username, int days) {
         return findExpiring(username, days, null);
+    }
+
+    // 식재료 이벤트(추가/삭제) 시 같은 냉장고의 다른 멤버들에게 푸시.
+    // 본인은 제외 — 자기가 한 행동이라 알림이 의미 없음.
+    // 멤버가 본인 1명뿐이면 sendToUsers가 빈 리스트로 no-op.
+    private void notifyOtherMembers(Fridge fridge, User actor, String title, String body) {
+        List<User> others = fridgeMemberRepository.findByFridge(fridge).stream()
+                .map(FridgeMember::getUser)
+                .filter(u -> !u.getUsername().equals(actor.getUsername()))
+                .toList();
+        fcmService.sendToUsers(others, title, body, "ingredients");
     }
 }

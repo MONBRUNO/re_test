@@ -2346,6 +2346,17 @@ public class FcmToken {
 
 초대 코드 발급(`createInvite`)은 수신자가 아직 특정되지 않아 푸시 대상이 없음 — 알림 없음.
 
+### 3-2. 식재료 이벤트 푸시 (가족 공유 활용)
+
+`IngredientService`에 hook 추가 — 공유 냉장고에서 누가 뭘 넣었는지/꺼냈는지 다른 멤버가 실시간으로 인지 가능.
+
+- **`saveIngredient`** — 추가 시 같은 냉장고의 다른 멤버에게 "OO님이 'XX'에 사과 5개를(을) 넣었어요."
+- **`deleteIngredient`** — 삭제 시 "OO님이 'XX'에서 사과를(을) 비웠어요."
+
+행위자 본인은 제외(`actor.getUsername()` 필터). 멤버가 본인뿐이면 `sendToUsers`가 빈 리스트로 no-op이라 별도 분기 불필요.
+
+수정(`updateIngredient`)은 알림 가치 낮아 제외 (이름/수량 변경은 노이즈).
+
 ### 4. 탈퇴 시 토큰 정리
 
 `UserService.deleteMyAccount`에 `fcmTokenRepository.deleteByUser(user)` 추가 — 탈퇴 후에도 토큰이 남아서 다른 유저에게 잘못 push되는 케이스 방지.
@@ -2387,7 +2398,10 @@ fcmService.sendToUsers(users, title, body, "fridge");
 
 앱 측 매핑 ([앱 README](https://github.com/MONBRUNO/Naengbuhae_App#5-알림-탭-라우팅) 참고):
 - `fridge` → 냉장고 관리 화면
+- `ingredients` → 식재료 탭 (식재료 추가/삭제 이벤트용)
 - `expiry` / `meal` — 로컬 알림 payload용 (서버 미사용)
 
-현재 hook 모두 `fridge`로 라우팅됨 (`FridgeService.joinByCode` / `removeMember`).
+현재 hook:
+- `FridgeService.joinByCode` / `removeMember` → `fridge`
+- `IngredientService.saveIngredient` / `deleteIngredient` → `ingredients`
 
