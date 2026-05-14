@@ -23,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 // FCM 푸시 전송 + Firebase Admin SDK 초기화.
 // app.firebase.service-account-path 가 비어있거나 파일이 없으면 init 실패해도 앱은 정상 기동.
@@ -71,21 +73,23 @@ public class FcmService {
     }
 
     @Transactional
-    public void sendToUser(String username, String title, String body) {
+    public void sendToUser(String username, String title, String body, String route) {
         if (!enabled) return;
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return;
-        sendToTokens(fcmTokenRepository.findByUser(user), title, body);
+        sendToTokens(fcmTokenRepository.findByUser(user), title, body, route);
     }
 
     @Transactional
-    public void sendToUsers(List<User> users, String title, String body) {
+    public void sendToUsers(List<User> users, String title, String body, String route) {
         if (!enabled || users.isEmpty()) return;
-        sendToTokens(fcmTokenRepository.findByUserIn(users), title, body);
+        sendToTokens(fcmTokenRepository.findByUserIn(users), title, body, route);
     }
 
-    private void sendToTokens(List<FcmToken> tokens, String title, String body) {
+    private void sendToTokens(List<FcmToken> tokens, String title, String body, String route) {
         FirebaseMessaging messaging = FirebaseMessaging.getInstance();
+        Map<String, String> data = new HashMap<>();
+        if (route != null) data.put("route", route);
         for (FcmToken t : tokens) {
             Message message = Message.builder()
                     .setToken(t.getToken())
@@ -93,6 +97,7 @@ public class FcmService {
                             .setTitle(title)
                             .setBody(body)
                             .build())
+                    .putAllData(data)
                     .build();
             try {
                 messaging.send(message);

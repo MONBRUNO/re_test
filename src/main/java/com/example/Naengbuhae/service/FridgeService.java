@@ -155,7 +155,8 @@ public class FridgeService {
                     .toList();
             fcmService.sendToUsers(others,
                     "냉장고에 새 멤버가 합류했어요",
-                    user.getName() + "님이 '" + fridge.getName() + "'에 참여했습니다.");
+                    user.getName() + "님이 '" + fridge.getName() + "'에 참여했습니다.",
+                    "fridge");
         }
         return toDto(fridge, user);
     }
@@ -179,7 +180,8 @@ public class FridgeService {
         // 제거된 본인에게 알림
         fcmService.sendToUser(target.getUsername(),
                 "냉장고에서 제외되었어요",
-                "'" + fridge.getName() + "'에서 더 이상 멤버가 아닙니다.");
+                "'" + fridge.getName() + "'에서 더 이상 멤버가 아닙니다.",
+                "fridge");
     }
 
     // 본인이 가입한 냉장고에서 나가기. 마지막 멤버였다면 냉장고 자체를 정리.
