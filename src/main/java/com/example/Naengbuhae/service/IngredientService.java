@@ -34,7 +34,7 @@ public class IngredientService {
     private final UserRepository userRepository;
     private final FridgeRepository fridgeRepository;
     private final FridgeMemberRepository fridgeMemberRepository;
-    private final FcmService fcmService;
+    private final AppNotificationService appNotificationService;
 
     // === 헬퍼: 요청 시 활성 냉장고 결정 ===
     // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고(=기본 냉장고).
@@ -210,6 +210,6 @@ public class IngredientService {
                 .map(FridgeMember::getUser)
                 .filter(u -> !u.getUsername().equals(actor.getUsername()))
                 .toList();
-        fcmService.sendToUsers(others, title, body, "ingredients");
+        appNotificationService.notifyUsers(others, title, body, "ingredients");
     }
 }

@@ -30,7 +30,7 @@ public class FridgeService {
     private final FridgeInviteRepository fridgeInviteRepository;
     private final IngredientRepository ingredientRepository;
     private final UserRepository userRepository;
-    private final FcmService fcmService;
+    private final AppNotificationService appNotificationService;
 
     private static final SecureRandom RANDOM = new SecureRandom();
     // 헷갈리는 문자(0/O, 1/I/l) 제외
@@ -153,7 +153,7 @@ public class FridgeService {
                     .map(FridgeMember::getUser)
                     .filter(u -> !u.getUsername().equals(user.getUsername()))
                     .toList();
-            fcmService.sendToUsers(others,
+            appNotificationService.notifyUsers(others,
                     "냉장고에 새 멤버가 합류했어요",
                     user.getName() + "님이 '" + fridge.getName() + "'에 참여했습니다.",
                     "fridge");
@@ -178,7 +178,7 @@ public class FridgeService {
         fridgeMemberRepository.deleteByFridgeAndUser(fridge, target);
 
         // 제거된 본인에게 알림
-        fcmService.sendToUser(target.getUsername(),
+        appNotificationService.notifyUser(target,
                 "냉장고에서 제외되었어요",
                 "'" + fridge.getName() + "'에서 더 이상 멤버가 아닙니다.",
                 "fridge");

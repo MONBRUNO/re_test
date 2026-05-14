@@ -6,6 +6,7 @@ import com.example.Naengbuhae.repository.FcmTokenRepository;
 import com.example.Naengbuhae.repository.FridgeMemberRepository;
 import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
+import com.example.Naengbuhae.repository.NotificationRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
 import com.example.Naengbuhae.util.CalorieCalculator;
@@ -33,6 +34,7 @@ public class UserService {
     private final FridgeMemberRepository fridgeMemberRepository;
     private final EmailAuthService emailAuthService;
     private final FcmTokenRepository fcmTokenRepository;
+    private final NotificationRepository notificationRepository;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -137,6 +139,7 @@ public class UserService {
         shoppingItemRepository.deleteByUser(user);
         refreshTokenService.revokeAllForUser(user);
         fcmTokenRepository.deleteByUser(user);
+        notificationRepository.deleteByUser(user);
         userRepository.delete(user);
 
         if (provider == OAuthProvider.KAKAO && providerId != null) {

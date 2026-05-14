@@ -2405,3 +2405,32 @@ fcmService.sendToUsers(users, title, body, "fridge");
 - `FridgeService.joinByCode` / `removeMember` → `fridge`
 - `IngredientService.saveIngredient` / `deleteIngredient` → `ingredients`
 
+### 8. 인앱 알림 센터 (DB 영속화)
+
+FCM 푸시는 휘발성이라 사용자가 놓치면 끝. DB에 영속화해서 마이페이지에서 다시 볼 수 있게.
+
+**`Notification` 엔티티**
+- `user_id` (recipient FK), `title`, `body`, `route`, `read`(default false), `created_at`
+- 인덱스: `(user_id, created_at DESC)` 목록 조회용, `(user_id, read)` 안읽은 카운트용
+
+**`AppNotificationService` — 모든 푸시의 단일 진입점**
+
+```java
+appNotificationService.notifyUsers(others, title, body, "fridge");
+// 내부: notificationRepository.saveAll(...) + fcmService.sendToUsers(...)
+```
+
+기존에 `FridgeService` / `IngredientService`가 `FcmService`를 직접 호출하던 것을 모두 `AppNotificationService`로 전환. **FCM 비활성 환경에서도 DB 영속화는 항상 수행**되므로 사용자가 나중에 FCM 활성화하면 히스토리에 남은 알림 확인 가능.
+
+**엔드포인트**
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/notifications` | 최신 50개. `[{id, title, body, route, read, createdAt}, ...]` |
+| GET | `/api/notifications/unread-count` | 뱃지용. `{count: 3}` |
+| POST | `/api/notifications/read-all` | 본인 알림 일괄 읽음. 앱이 알림 센터 진입 시 자동 호출. `{updated: 5}` |
+
+**탈퇴 시 정리**
+
+`UserService.deleteMyAccount`에 `notificationRepository.deleteByUser(user)` 추가.
+
