@@ -2374,3 +2374,20 @@ WARN  FcmService - FCM 비활성화: app.firebase.service-account-path 미설정
 
 푸시만 안 가고 나머지는 정상.
 
+### 7. 페이로드 `route` 필드 (앱 탭 라우팅)
+
+앱이 알림을 탭했을 때 어느 화면으로 보낼지 서버가 결정 — `data.route` 값으로 명시.
+
+```java
+fcmService.sendToUsers(users, title, body, "fridge");
+// ↓ FirebaseMessaging.Message
+//   notification: { title, body }
+//   data: { route: "fridge" }
+```
+
+앱 측 매핑 ([앱 README](https://github.com/MONBRUNO/Naengbuhae_App#5-알림-탭-라우팅) 참고):
+- `fridge` → 냉장고 관리 화면
+- `expiry` / `meal` — 로컬 알림 payload용 (서버 미사용)
+
+현재 hook 모두 `fridge`로 라우팅됨 (`FridgeService.joinByCode` / `removeMember`).
+
