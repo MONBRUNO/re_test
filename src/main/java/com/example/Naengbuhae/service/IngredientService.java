@@ -35,6 +35,7 @@ public class IngredientService {
     private final FridgeRepository fridgeRepository;
     private final FridgeMemberRepository fridgeMemberRepository;
     private final AppNotificationService appNotificationService;
+    private final ActivityLogService activityLogService;
 
     // === 헬퍼: 요청 시 활성 냉장고 결정 ===
     // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고(=기본 냉장고).
@@ -86,6 +87,10 @@ public class IngredientService {
         entity.setFridge(fridge);
 
         Ingredient saved = ingredientRepository.save(entity);
+
+        // 활동 로그 (가족 활동 통계용)
+        activityLogService.recordIngredientAdded(
+                fridge, user, saved.getName(), saved.getQuantity(), saved.getUnit());
 
         // 같은 냉장고 다른 멤버에게 알림 (혼자 쓰는 냉장고면 발송 대상 없음)
         notifyOtherMembers(fridge, user,
@@ -140,8 +145,9 @@ public class IngredientService {
         String ingName = ingredient.getName();
         ingredientRepository.delete(ingredient);
 
-        // 공유 냉장고에서만 알림 — 마이그레이션 누락 케이스(fridge null)는 본인만 보유 중이므로 스킵
+        // 공유 냉장고에서만 알림/로그 — 마이그레이션 누락 케이스(fridge null)는 본인만 보유 중이므로 스킵
         if (fridge != null) {
+            activityLogService.recordIngredientRemoved(fridge, user, ingName);
             notifyOtherMembers(fridge, user,
                     "식재료가 사라졌어요",
                     user.getName() + "님이 '" + fridge.getName() + "'에서 " + ingName + "를(을) 비웠어요.");

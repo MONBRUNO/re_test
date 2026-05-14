@@ -1,6 +1,7 @@
 package com.example.Naengbuhae.controller;
 
 import com.example.Naengbuhae.dto.FridgeResponseDto;
+import com.example.Naengbuhae.service.ActivityLogService;
 import com.example.Naengbuhae.service.FridgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.Map;
 public class FridgeController {
 
     private final FridgeService fridgeService;
+    private final ActivityLogService activityLogService;
 
     // 내가 멤버인 모든 냉장고
     @GetMapping
@@ -75,5 +77,13 @@ public class FridgeController {
     public Map<String, Object> leave(@PathVariable Long id, Principal principal) {
         fridgeService.leaveFridge(id, principal.getName());
         return Map.of("success", true);
+    }
+
+    // 가족 활동 통계 — 기간(days) 기본 30, 최대 365.
+    @GetMapping("/{id}/activity-stats")
+    public ActivityLogService.Stats activityStats(@PathVariable Long id,
+                                                  @RequestParam(defaultValue = "30") int days,
+                                                  Principal principal) {
+        return activityLogService.getStats(id, days, principal.getName());
     }
 }

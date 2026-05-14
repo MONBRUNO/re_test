@@ -5,6 +5,7 @@ import com.example.Naengbuhae.domain.FridgeInvite;
 import com.example.Naengbuhae.domain.FridgeMember;
 import com.example.Naengbuhae.dto.FridgeResponseDto;
 import com.example.Naengbuhae.dto.FridgeResponseDto.MemberDto;
+import com.example.Naengbuhae.repository.ActivityLogRepository;
 import com.example.Naengbuhae.repository.FridgeInviteRepository;
 import com.example.Naengbuhae.repository.FridgeMemberRepository;
 import com.example.Naengbuhae.repository.FridgeRepository;
@@ -29,6 +30,7 @@ public class FridgeService {
     private final FridgeMemberRepository fridgeMemberRepository;
     private final FridgeInviteRepository fridgeInviteRepository;
     private final IngredientRepository ingredientRepository;
+    private final ActivityLogRepository activityLogRepository;
     private final UserRepository userRepository;
     private final AppNotificationService appNotificationService;
 
@@ -97,6 +99,7 @@ public class FridgeService {
         ingredientRepository.deleteByFridge(fridge);
         fridgeInviteRepository.deleteByFridge(fridge);
         fridgeMemberRepository.deleteByFridge(fridge);
+        activityLogRepository.deleteByFridge(fridge);
         fridgeRepository.delete(fridge);
     }
 
@@ -198,10 +201,11 @@ public class FridgeService {
         }
         fridgeMemberRepository.deleteByFridgeAndUser(fridge, user);
 
-        // 모든 멤버가 나갔으면 냉장고 자체 정리 (식재료/초대코드 포함)
+        // 모든 멤버가 나갔으면 냉장고 자체 정리 (식재료/초대코드/활동로그 포함)
         if (fridgeMemberRepository.findByFridge(fridge).isEmpty()) {
             ingredientRepository.deleteByFridge(fridge);
             fridgeInviteRepository.deleteByFridge(fridge);
+            activityLogRepository.deleteByFridge(fridge);
             fridgeRepository.delete(fridge);
         }
     }

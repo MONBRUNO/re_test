@@ -2434,3 +2434,28 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
 
 `UserService.deleteMyAccount`에 `notificationRepository.deleteByUser(user)` 추가.
 
+### 9. 가족 활동 통계
+
+식재료를 누가 얼마나 추가/소비했는지, 어떤 품목이 자주 들어오는지 집계 — 가족 공유의 차별화 데이터.
+
+**`ActivityLog` 엔티티 (별도 테이블 분리 이유)**
+
+- 행위자(`actor`) 관점 — `Notification`은 수신자 관점이라 본인의 활동이 본인 row로 안 남음 → 통계 부적합
+- `(fridge_id, created_at DESC)` 인덱스로 기간 필터, `(fridge_id, actor_id)` 인덱스로 멤버별 집계
+- 액션: `INGREDIENT_ADDED` / `INGREDIENT_REMOVED` (수정은 노이즈라 제외)
+
+**`ActivityLogService.getStats(fridgeId, days, requester)`**
+
+- 멤버는 활동 없어도 표시 (전체 멤버를 0으로 초기화 후 카운트 덮어쓰기) — UI에서 "이 사람은 아무것도 안 했네" 확인 가능
+- TOP 5: `topIngredientsByAction` 쿼리로 식재료명 group by + 정렬, JPA 내장 limit 대신 서비스에서 자름
+
+**엔드포인트**
+
+`GET /api/fridges/{id}/activity-stats?days=30` — 본인이 멤버인 냉장고만. `days`는 1~365로 clamp.
+
+**라이프사이클**
+
+- `IngredientService.saveIngredient` / `deleteIngredient` 직후 `activityLogService.recordIngredientAdded/Removed`
+- `FridgeService.deleteFridge` / `leaveFridge`(마지막 멤버) — 냉장고별 로그 정리
+- `UserService.deleteMyAccount` — 사용자의 actor 로그 정리
+
