@@ -2300,3 +2300,77 @@ app.mail.web-base-url=${MAIL_WEB_BASE_URL:http://localhost:5173}
 | POST | `/user/password/forgot` | 비번 재설정 메일 요청 |
 | POST | `/user/password/reset` | 비번 재설정 토큰 사용 |
 
+---
+
+## 🆕 2026-05-14 작업
+
+모바일 앱 알림 기능 지원을 위한 백엔드 FCM 인프라.
+
+> 모바일 앱 측 알림 구현(로컬 알림 + FCM 수신)은 [Naengbuhae_App README](https://github.com/MONBRUNO/Naengbuhae_App) 참고.
+
+### 1. FCM 토큰 등록 인프라
+
+`FcmToken` 엔티티 — 유저당 여러 디바이스 지원.
+
+```
+@Entity @Table(name = "fcm_tokens")
+public class FcmToken {
+    enum Platform { ANDROID, IOS, WEB }
+    @ManyToOne User user;
+    String token;        // 글로벌 unique
+    Platform platform;
+    LocalDateTime createdAt, lastUsedAt;
+}
+```
+
+- `user_id`에 인덱스 (한 유저의 토큰 일괄 조회용)
+- `token`에 unique 인덱스 (디바이스 양도 케이스 처리용)
+
+`FcmTokenService.register` 시 같은 토큰이 다른 유저로 들어오면 매핑을 새 유저로 갱신 — 디바이스 양도/계정 전환 시나리오.
+
+### 2. FCM 전송 서비스
+
+`FcmService` — Firebase Admin SDK 래퍼.
+
+- `@PostConstruct`에서 `app.firebase.service-account-path`를 ResourceLoader로 읽어 `FirebaseApp.initializeApp()`
+- **service account 미설정 시 `enabled=false`로 폴백** — 서버는 정상 기동, send 호출만 no-op. FCM 미설정 환경(로컬/CI)에서도 부팅 가능
+- `sendToUser(username, title, body)` / `sendToUsers(users, title, body)` 두 진입점
+- 전송 실패 시 `UNREGISTERED`/`INVALID_ARGUMENT`이면 토큰 자동 정리 (죽은 디바이스 토큰 청소)
+
+### 3. 멤버/초대 이벤트 푸시
+
+`FridgeService`에 hook 추가:
+
+- **`joinByCode`** — 새 멤버 합류 시 기존 멤버 전원에게 푸시 ("OO님이 'XX'에 참여했습니다")
+- **`removeMember`** — 제거된 본인에게 푸시 ("XX에서 더 이상 멤버가 아닙니다")
+
+초대 코드 발급(`createInvite`)은 수신자가 아직 특정되지 않아 푸시 대상이 없음 — 알림 없음.
+
+### 4. 탈퇴 시 토큰 정리
+
+`UserService.deleteMyAccount`에 `fcmTokenRepository.deleteByUser(user)` 추가 — 탈퇴 후에도 토큰이 남아서 다른 유저에게 잘못 push되는 케이스 방지.
+
+### 5. 엔드포인트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/user/fcm-tokens` | 디바이스 토큰 등록 (body: `{token, platform}`) |
+| DELETE | `/user/fcm-tokens/{token}` | 로그아웃 직전 토큰 해제 |
+
+### 6. 운영 셋업
+
+`.env`에 추가:
+```
+# Firebase Console > 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성 → JSON 다운로드
+FIREBASE_SERVICE_ACCOUNT_PATH=file:/etc/secrets/firebase-service-account.json
+```
+
+로컬 개발은 `classpath:firebase-service-account.json`도 가능 (resources/ 아래 두고 `.gitignore` 필수).
+
+미설정 시 부팅 로그:
+```
+WARN  FcmService - FCM 비활성화: app.firebase.service-account-path 미설정
+```
+
+푸시만 안 가고 나머지는 정상.
+
