@@ -39,6 +39,9 @@ dependencies {
     // Swagger (API 문서 제공 도구)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0'
 
+    // FCM 푸시 알림 (앱 멤버/초대 이벤트)
+    implementation 'com.google.firebase:firebase-admin:9.4.0'
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'

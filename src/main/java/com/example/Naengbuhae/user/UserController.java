@@ -2,6 +2,8 @@ package com.example.Naengbuhae.user;
 
 import lombok.RequiredArgsConstructor;
 import com.example.Naengbuhae.config.JwtUtil;
+import com.example.Naengbuhae.domain.FcmToken;
+import com.example.Naengbuhae.service.FcmTokenService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +19,7 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
     private final EmailAuthService emailAuthService;
+    private final FcmTokenService fcmTokenService;
 
     @PostMapping("/signup")
     // @Valid 어노테이션 추가로 SignupRequest DTO의 제약조건 발동
@@ -122,5 +125,30 @@ public class UserController {
     public ApiResponse resetPassword(@RequestBody Map<String, String> body) {
         emailAuthService.resetPassword(body.get("token"), body.get("newPassword"));
         return new ApiResponse(true, "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.");
+    }
+
+    // === FCM 푸시 알림 토큰 ===
+
+    // 앱에서 발급받은 디바이스 토큰을 서버에 등록.
+    // body: {"token": "...", "platform": "ANDROID|IOS|WEB"}
+    @PostMapping("/fcm-tokens")
+    public ApiResponse registerFcmToken(@RequestBody Map<String, String> body, Principal principal) {
+        String token = body.get("token");
+        String platformStr = body.getOrDefault("platform", "ANDROID");
+        FcmToken.Platform platform;
+        try {
+            platform = FcmToken.Platform.valueOf(platformStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            platform = FcmToken.Platform.ANDROID;
+        }
+        fcmTokenService.register(principal.getName(), token, platform);
+        return new ApiResponse(true, "FCM 토큰이 등록되었습니다.");
+    }
+
+    // 로그아웃/탈퇴 직전 호출.
+    @DeleteMapping("/fcm-tokens/{token}")
+    public ApiResponse unregisterFcmToken(@PathVariable String token) {
+        fcmTokenService.unregister(token);
+        return new ApiResponse(true, "FCM 토큰이 해제되었습니다.");
     }
 }

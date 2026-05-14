@@ -2,6 +2,7 @@ package com.example.Naengbuhae.user;
 
 import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.FridgeMember;
+import com.example.Naengbuhae.repository.FcmTokenRepository;
 import com.example.Naengbuhae.repository.FridgeMemberRepository;
 import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
@@ -31,6 +32,7 @@ public class UserService {
     private final FridgeRepository fridgeRepository;
     private final FridgeMemberRepository fridgeMemberRepository;
     private final EmailAuthService emailAuthService;
+    private final FcmTokenRepository fcmTokenRepository;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -134,6 +136,7 @@ public class UserService {
         recipeRepository.deleteByUser(user);
         shoppingItemRepository.deleteByUser(user);
         refreshTokenService.revokeAllForUser(user);
+        fcmTokenRepository.deleteByUser(user);
         userRepository.delete(user);
 
         if (provider == OAuthProvider.KAKAO && providerId != null) {

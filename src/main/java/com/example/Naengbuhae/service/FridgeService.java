@@ -30,6 +30,7 @@ public class FridgeService {
     private final FridgeInviteRepository fridgeInviteRepository;
     private final IngredientRepository ingredientRepository;
     private final UserRepository userRepository;
+    private final FcmService fcmService;
 
     private static final SecureRandom RANDOM = new SecureRandom();
     // 헷갈리는 문자(0/O, 1/I/l) 제외
@@ -143,8 +144,18 @@ public class FridgeService {
         }
 
         Fridge fridge = invite.getFridge();
-        if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
+        boolean alreadyMember = fridgeMemberRepository.existsByFridgeAndUser(fridge, user);
+        if (!alreadyMember) {
             fridgeMemberRepository.save(new FridgeMember(fridge, user));
+
+            // 새 멤버 합류 → 기존 멤버들에게 푸시 (가입자 본인 제외)
+            List<User> others = fridgeMemberRepository.findByFridge(fridge).stream()
+                    .map(FridgeMember::getUser)
+                    .filter(u -> !u.getUsername().equals(user.getUsername()))
+                    .toList();
+            fcmService.sendToUsers(others,
+                    "냉장고에 새 멤버가 합류했어요",
+                    user.getName() + "님이 '" + fridge.getName() + "'에 참여했습니다.");
         }
         return toDto(fridge, user);
     }
@@ -164,6 +175,11 @@ public class FridgeService {
             throw new IllegalArgumentException("멤버가 아닙니다.");
         }
         fridgeMemberRepository.deleteByFridgeAndUser(fridge, target);
+
+        // 제거된 본인에게 알림
+        fcmService.sendToUser(target.getUsername(),
+                "냉장고에서 제외되었어요",
+                "'" + fridge.getName() + "'에서 더 이상 멤버가 아닙니다.");
     }
 
     // 본인이 가입한 냉장고에서 나가기. 마지막 멤버였다면 냉장고 자체를 정리.
