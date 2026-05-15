@@ -55,4 +55,13 @@ public class ShoppingListController {
         int deleted = shoppingItemService.deleteShoppingItems(body.get("ids"), principal.getName());
         return deleted + "개의 장보기 항목이 삭제되었습니다.";
     }
+
+    // 자동 제안 — 가족이 자주 비웠는데 지금 냉장고에도 없고 장보기에도 없는 식재료.
+    @GetMapping("/suggestions")
+    public java.util.List<java.util.Map<String, Object>> suggestions(
+            @RequestParam(required = false) Long fridgeId,
+            @RequestParam(defaultValue = "5") int limit,
+            Principal principal) {
+        return shoppingItemService.getSuggestions(principal.getName(), fridgeId, limit);
+    }
 }

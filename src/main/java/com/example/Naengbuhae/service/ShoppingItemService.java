@@ -1,11 +1,16 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.ActivityLog;
 import com.example.Naengbuhae.domain.Category;
+import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.ShoppingItem;
 import com.example.Naengbuhae.domain.Storage;
 import com.example.Naengbuhae.dto.ShoppingItemRequestDto;
 import com.example.Naengbuhae.dto.ShoppingItemResponseDto;
+import com.example.Naengbuhae.repository.ActivityLogRepository;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository; // ✨ 냉장고 창고 추가!
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
 import com.example.Naengbuhae.user.User;
@@ -15,7 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +36,9 @@ public class ShoppingItemService {
     private final ShoppingItemRepository shoppingItemRepository;
     private final UserRepository userRepository;
     private final IngredientRepository ingredientRepository; // ✨ 냉장고 저장용 의존성 주입
+    private final FridgeRepository fridgeRepository;
+    private final FridgeMemberRepository fridgeMemberRepository;
+    private final ActivityLogRepository activityLogRepository;
 
     // 1. 장보기 항목 추가
     @Transactional
@@ -77,6 +90,51 @@ public class ShoppingItemService {
             throw new IllegalArgumentException("본인의 장보기 항목만 삭제할 수 있습니다.");
         }
         shoppingItemRepository.delete(shoppingItem);
+    }
+
+    // 4-3. 장보기 자동 제안 — 가족이 자주 비운(INGREDIENT_REMOVED) 식재료 중
+    //      "현재 냉장고에 없고" + "이미 장보기에 없는" 이름만 골라서 카운트 내림차순으로 반환.
+    //      기간은 최근 60일.
+    public List<Map<String, Object>> getSuggestions(String username, Long fridgeId, int limit) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
+        Fridge fridge = resolveFridge(user, fridgeId);
+
+        LocalDateTime since = LocalDateTime.now().minusDays(60);
+        List<Object[]> rows = activityLogRepository.topIngredientsByAction(
+                fridge, ActivityLog.Action.INGREDIENT_REMOVED, since);
+
+        Set<String> inFridge = ingredientRepository.findByFridge(fridge).stream()
+                .map(Ingredient::getName)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<String> inShopping = shoppingItemRepository.findByUser(user).stream()
+                .map(ShoppingItem::getName)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            String name = (String) row[0];
+            long count = (long) row[1];
+            if (inFridge.contains(name) || inShopping.contains(name)) continue;
+            result.add(Map.of("name", name, "count", count));
+            if (result.size() >= safeLimit) break;
+        }
+        return result;
+    }
+
+    // 사용자가 멤버인 냉장고 결정. fridgeId 명시되면 그 냉장고(권한 검증), 아니면 첫 냉장고.
+    private Fridge resolveFridge(User user, Long fridgeId) {
+        if (fridgeId != null) {
+            Fridge fridge = fridgeRepository.findById(fridgeId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 냉장고가 없습니다."));
+            if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
+                throw new IllegalArgumentException("이 냉장고에 접근 권한이 없습니다.");
+            }
+            return fridge;
+        }
+        return fridgeRepository.findAllForMember(user).stream().findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("냉장고가 없습니다."));
     }
 
     // 4-2. 다중 선택 일괄 삭제. 본인 소유 항목만 삭제, 그 외 id는 조용히 무시.
