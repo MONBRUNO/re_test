@@ -4,6 +4,7 @@ import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.FridgeMember;
 import com.example.Naengbuhae.repository.ActivityLogRepository;
 import com.example.Naengbuhae.repository.FcmTokenRepository;
+import com.example.Naengbuhae.repository.FridgeInviteRepository;
 import com.example.Naengbuhae.repository.FridgeMemberRepository;
 import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
@@ -37,6 +38,8 @@ public class UserService {
     private final FcmTokenRepository fcmTokenRepository;
     private final NotificationRepository notificationRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final FridgeInviteRepository fridgeInviteRepository;
+    private final UserTokenRepository userTokenRepository;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -92,6 +95,11 @@ public class UserService {
             throw new IllegalArgumentException("비밀번호는 8자 이상이며, 영어 소문자, 숫자, 특수문자를 포함해야 합니다.");
         }
 
+        // 1-1. 가입 화면에서 받은 6자리 인증번호로 검증된 이메일만 통과. 동시에 verification row 정리.
+        if (!emailAuthService.consumeVerifiedSignupCode(request.getEmail())) {
+            throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
+        }
+
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User user = new User(
                 request.getUsername(), encodedPassword, UserRole.USER,
@@ -99,6 +107,8 @@ public class UserService {
                 request.getWeight(), request.getBirthDate(), request.getEmail(),
                 request.getActivityLevel(), request.getDietGoal(), request.getAllergies()
         );
+        // 인증 코드를 통과했으므로 verified 상태로 저장 — 매직 링크 메일 추가 발송 불필요.
+        user.setEmailVerified(true);
 
         // 2. 칼로리 계산
         int calculatedCalories = CalorieCalculator.calculateRecommendedCalories(
@@ -107,13 +117,10 @@ public class UserService {
         );
         user.setRecommendedCalories(calculatedCalories);
 
-        // 3. 사용자 저장
+        // 3. 사용자 저장 + 기본 냉장고
         User savedUser = userRepository.save(user);
-
-        // 4. ✨ 파트너의 신규 기능 추가 (냉장고 생성 및 이메일 발송)
         Fridge defaultFridge = fridgeRepository.save(new Fridge(savedUser, defaultFridgeName(savedUser)));
         fridgeMemberRepository.save(new FridgeMember(defaultFridge, savedUser));
-        emailAuthService.sendVerificationEmail(savedUser);
     }
 
     public static String defaultFridgeName(User user) {
@@ -136,6 +143,22 @@ public class UserService {
         OAuthProvider provider = user.getProvider();
         String providerId = user.getProviderId();
 
+        // 1. 사용자가 소유한 냉장고: 자식 데이터(초대/활동로그/식재료/멤버) 먼저 모두 정리 후 냉장고 삭제.
+        //    같은 냉장고에 다른 가족 멤버가 있어도 함께 비워진다 (소유자 탈퇴 = 그 냉장고는 사라짐).
+        for (Fridge fridge : fridgeRepository.findByOwner(user)) {
+            fridgeInviteRepository.deleteByFridge(fridge);
+            activityLogRepository.deleteByFridge(fridge);
+            ingredientRepository.deleteByFridge(fridge);
+            fridgeMemberRepository.deleteByFridge(fridge);
+            fridgeRepository.delete(fridge);
+        }
+
+        // 2. 다른 사람 냉장고에 멤버로만 들어가 있던 흔적 정리.
+        for (FridgeMember m : fridgeMemberRepository.findByUser(user)) {
+            fridgeMemberRepository.delete(m);
+        }
+
+        // 3. 본인이 만든 데이터 일괄 정리. 1번에서 owned-fridge 한정 cleanup이 끝났으므로 여기는 잔여물(다른 냉장고에 추가한 식재료 등).
         ingredientRepository.deleteByUser(user);
         recipeRepository.deleteByUser(user);
         shoppingItemRepository.deleteByUser(user);
@@ -143,6 +166,9 @@ public class UserService {
         fcmTokenRepository.deleteByUser(user);
         notificationRepository.deleteByUser(user);
         activityLogRepository.deleteByActor(user);
+        userTokenRepository.deleteByUser(user);
+
+        // 4. 모든 FK가 정리된 뒤 사용자 본체 삭제.
         userRepository.delete(user);
 
         if (provider == OAuthProvider.KAKAO && providerId != null) {

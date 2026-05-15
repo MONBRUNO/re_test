@@ -20,6 +20,26 @@ public final class MailTemplates {
         );
     }
 
+    // 가입 화면에서 인라인으로 입력할 6자리 코드 메일. 링크 X.
+    public static String verifyEmailCode(String code) {
+        return "<!DOCTYPE html>"
+                + "<html><body style=\"margin:0;padding:0;background:#f5f5f5;font-family:'Apple SD Gothic Neo',-apple-system,sans-serif;color:" + COLOR_TEXT + ";\">"
+                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#f5f5f5;padding:40px 20px;\"><tr><td align=\"center\">"
+                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;\">"
+                + "<tr><td style=\"padding:32px;\">"
+                + "<h1 style=\"margin:0;font-size:22px;font-weight:700;\">냉부해 - 이메일 인증</h1>"
+                + "<p style=\"margin:16px 0 0;font-size:14px;line-height:1.6;\">아래 6자리 인증번호를 회원가입 화면에 입력해주세요.</p>"
+                + "<div style=\"margin:24px 0;padding:20px;background:" + COLOR_ACCENT + ";border-radius:12px;text-align:center;\">"
+                + "<span style=\"font-size:32px;font-weight:700;letter-spacing:8px;color:" + COLOR_TEXT + ";\">" + escape(code) + "</span>"
+                + "</div>"
+                + "<p style=\"margin:16px 0 0;font-size:12px;color:" + COLOR_MUTED + ";\">이 코드는 10분 동안 유효합니다. 본인이 요청하지 않았다면 이 메일을 무시해주세요.</p>"
+                + "</td></tr>"
+                + "<tr><td style=\"padding:16px 32px;background:#fafafa;font-size:11px;color:" + COLOR_MUTED + ";text-align:center;\">"
+                + "이 메일은 발신 전용입니다."
+                + "</td></tr>"
+                + "</table></td></tr></table></body></html>";
+    }
+
     public static String passwordReset(String userName, String resetUrl) {
         return wrap(
                 "비밀번호 재설정",

@@ -11,6 +11,11 @@ java {
     sourceCompatibility = '17'
 }
 
+// Windows-KR 시스템에서 javac 기본 인코딩이 cp949라 한글 문자열이 깨지는 문제 방어.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor

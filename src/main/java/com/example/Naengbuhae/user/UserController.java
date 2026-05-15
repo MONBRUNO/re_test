@@ -37,9 +37,49 @@ public class UserController {
             return new LoginResponse(false, "로그인 실패", null, null);
         }
 
+        // 이메일+비번 가입자는 인증 완료 후에만 로그인 허용. OAuth 가입자는 emailVerified=true로 들어가서 통과.
+        if (!user.isEmailVerified()) {
+            return new LoginResponse(false,
+                    "이메일 인증 후 로그인할 수 있어요. 가입 시 보낸 메일을 확인해주세요.",
+                    null, null, true, user.getEmail());
+        }
+
         String accessToken = jwtUtil.createToken(user.getUsername(), user.getRole());
         String refreshToken = refreshTokenService.issue(user);
         return new LoginResponse(true, "로그인 성공", accessToken, refreshToken);
+    }
+
+    // === 회원가입 화면 인라인 인증번호 ===
+
+    // 이메일에 6자리 인증번호 발송. 가입 전이라 미로그인 상태.
+    // body: {"email": "..."}
+    @PostMapping("/email/send-code")
+    public ApiResponse sendSignupCode(@RequestBody Map<String, String> body) {
+        emailAuthService.sendSignupVerificationCode(body.get("email"));
+        return new ApiResponse(true, "인증번호를 보냈어요.");
+    }
+
+    // 입력한 인증번호 검증. 가입 폼 제출 전 별도로 호출.
+    // body: {"email": "...", "code": "123456"}
+    @PostMapping("/email/verify-code")
+    public ApiResponse verifySignupCode(@RequestBody Map<String, String> body) {
+        emailAuthService.verifySignupCode(body.get("email"), body.get("code"));
+        return new ApiResponse(true, "이메일 인증이 완료되었어요.");
+    }
+
+    // 미인증 사용자가 로그인 화면에서 "메일 다시 받기"를 눌렀을 때 호출.
+    // username/password를 다시 받아 검증 → 비번 맞고 미인증 상태일 때만 재발송. 이메일 enumeration 방지.
+    @PostMapping("/resend-verification-public")
+    public ApiResponse resendVerificationPublic(@Valid @RequestBody LoginRequest request) {
+        User user = userService.login(request.getUsername(), request.getPassword());
+        if (user == null) {
+            return new ApiResponse(false, "아이디 또는 비밀번호를 확인해주세요.");
+        }
+        if (user.isEmailVerified()) {
+            return new ApiResponse(false, "이미 이메일 인증이 완료된 계정이에요.");
+        }
+        emailAuthService.resendVerificationEmail(user.getUsername());
+        return new ApiResponse(true, "인증 메일을 다시 보냈어요.");
     }
 
     // access token 만료 시 refresh token으로 새 access(+새 refresh) 발급

@@ -22,6 +22,7 @@ public class EmailAuthService {
 
     private final UserRepository userRepository;
     private final UserTokenRepository userTokenRepository;
+    private final EmailVerificationCodeRepository emailVerificationCodeRepository;
     private final MailService mailService;
     private final PasswordEncoder passwordEncoder;
 
@@ -29,6 +30,8 @@ public class EmailAuthService {
     private static final int TOKEN_BYTES = 32; // base64로 약 43자
     private static final int VERIFY_TTL_HOURS = 24;
     private static final int RESET_TTL_MINUTES = 30;
+    // 회원가입 인라인 인증번호 TTL — 사용자가 받자마자 입력하는 패턴이라 짧게.
+    private static final int SIGNUP_CODE_TTL_MINUTES = 10;
     private static final String PASSWORD_REGEX =
             "^(?=.*[a-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};:'\",.<>?/])[A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{};:'\",.<>?/]{8,}$";
 
@@ -149,5 +152,70 @@ public class EmailAuthService {
         byte[] bytes = new byte[TOKEN_BYTES];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    // === 회원가입 화면용: 6자리 인증번호 발송 ===
+    // 기존에 같은 이메일로 남아있던 코드는 삭제 후 새로 발급 (재요청해도 가장 최신 1건만 유효).
+    // 이미 회원가입된 이메일이면 즉시 거부 — 이메일 enumeration보다 명확한 UX 우선.
+    @Transactional
+    public void sendSignupVerificationCode(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("이메일을 입력해주세요.");
+        }
+        String normalized = email.trim().toLowerCase();
+        if (userRepository.findByEmail(normalized).isPresent()) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        emailVerificationCodeRepository.deleteByEmail(normalized);
+
+        String code = generate6DigitCode();
+        emailVerificationCodeRepository.save(new EmailVerificationCode(
+                normalized, code,
+                LocalDateTime.now().plusMinutes(SIGNUP_CODE_TTL_MINUTES)
+        ));
+
+        mailService.sendHtml(
+                normalized,
+                "[냉부해] 회원가입 인증번호",
+                MailTemplates.verifyEmailCode(code)
+        );
+    }
+
+    // 사용자가 입력한 코드 검증 — 통과하면 EmailVerificationCode.verified=true.
+    @Transactional
+    public void verifySignupCode(String email, String code) {
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            throw new IllegalArgumentException("이메일과 인증번호를 입력해주세요.");
+        }
+        String normalized = email.trim().toLowerCase();
+        EmailVerificationCode row = emailVerificationCodeRepository
+                .findTopByEmailOrderByCreatedAtDesc(normalized)
+                .orElseThrow(() -> new IllegalArgumentException("인증번호를 먼저 요청해주세요."));
+
+        if (row.isExpired()) {
+            throw new IllegalArgumentException("인증번호가 만료되었습니다. 다시 받아주세요.");
+        }
+        if (!row.getCode().equals(code.trim())) {
+            throw new IllegalArgumentException("인증번호가 일치하지 않습니다.");
+        }
+        row.setVerified(true);
+    }
+
+    // 회원가입 시점에 호출 — 검증된 코드가 살아있으면 true, 동시에 모두 정리.
+    @Transactional
+    public boolean consumeVerifiedSignupCode(String email) {
+        if (email == null || email.isBlank()) return false;
+        String normalized = email.trim().toLowerCase();
+        boolean ok = emailVerificationCodeRepository.hasValidVerifiedCode(normalized, LocalDateTime.now());
+        if (ok) {
+            emailVerificationCodeRepository.deleteByEmail(normalized);
+        }
+        return ok;
+    }
+
+    private String generate6DigitCode() {
+        // 000000~999999 균등. 앞 0이 잘리지 않도록 String.format 사용.
+        return String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 }
