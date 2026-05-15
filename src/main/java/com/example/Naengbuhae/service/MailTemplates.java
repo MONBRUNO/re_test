@@ -9,17 +9,6 @@ public final class MailTemplates {
     private static final String COLOR_TEXT = "#111827";
     private static final String COLOR_MUTED = "#6B7280";
 
-    public static String verifyEmail(String userName, String verifyUrl) {
-        return wrap(
-                "이메일 인증",
-                userName + "님, 회원가입을 환영합니다!",
-                "아래 버튼을 눌러 이메일 인증을 완료해주세요. 인증 후 모든 기능을 자유롭게 사용할 수 있습니다.",
-                "이메일 인증하기",
-                verifyUrl,
-                "이 링크는 24시간 동안 유효합니다."
-        );
-    }
-
     // 가입 화면에서 인라인으로 입력할 6자리 코드 메일. 링크 X.
     public static String verifyEmailCode(String code) {
         return "<!DOCTYPE html>"

@@ -7,9 +7,10 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// 이메일 인증/비번 재설정용 일회성 토큰.
-// EMAIL_VERIFY: 회원가입 직후 발송, 24시간 유효
-// PASSWORD_RESET: "비번 잊었어요" 요청 시 발송, 30분 유효
+// 비밀번호 재설정용 일회성 토큰.
+// PASSWORD_RESET: "비번 잊었어요" 요청 시 발송, 30분 유효.
+// (과거 EMAIL_VERIFY는 회원가입 직후 매직 링크용이었으나 코드 방식으로 전환되며 사용 중단.
+//  스키마에 남은 enum 값과 기존 row 호환을 위해 enum 자체는 보존.)
 @Entity
 @Table(name = "user_tokens",
         indexes = @Index(name = "idx_user_tokens_token", columnList = "token", unique = true))

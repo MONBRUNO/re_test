@@ -36,13 +36,8 @@ public class UserController {
         if (user == null) {
             return new LoginResponse(false, "로그인 실패", null, null);
         }
-
-        // 이메일+비번 가입자는 인증 완료 후에만 로그인 허용. OAuth 가입자는 emailVerified=true로 들어가서 통과.
-        if (!user.isEmailVerified()) {
-            return new LoginResponse(false,
-                    "이메일 인증 후 로그인할 수 있어요. 가입 시 보낸 메일을 확인해주세요.",
-                    null, null, true, user.getEmail());
-        }
+        // emailVerified 검사는 제거 — 가입 흐름이 인라인 인증 코드 통과를 강제하므로
+        // 정상 가입자는 항상 verified=true. OAuth 가입자도 자동 verified.
 
         String accessToken = jwtUtil.createToken(user.getUsername(), user.getRole());
         String refreshToken = refreshTokenService.issue(user);
@@ -65,21 +60,6 @@ public class UserController {
     public ApiResponse verifySignupCode(@RequestBody Map<String, String> body) {
         emailAuthService.verifySignupCode(body.get("email"), body.get("code"));
         return new ApiResponse(true, "이메일 인증이 완료되었어요.");
-    }
-
-    // 미인증 사용자가 로그인 화면에서 "메일 다시 받기"를 눌렀을 때 호출.
-    // username/password를 다시 받아 검증 → 비번 맞고 미인증 상태일 때만 재발송. 이메일 enumeration 방지.
-    @PostMapping("/resend-verification-public")
-    public ApiResponse resendVerificationPublic(@Valid @RequestBody LoginRequest request) {
-        User user = userService.login(request.getUsername(), request.getPassword());
-        if (user == null) {
-            return new ApiResponse(false, "아이디 또는 비밀번호를 확인해주세요.");
-        }
-        if (user.isEmailVerified()) {
-            return new ApiResponse(false, "이미 이메일 인증이 완료된 계정이에요.");
-        }
-        emailAuthService.resendVerificationEmail(user.getUsername());
-        return new ApiResponse(true, "인증 메일을 다시 보냈어요.");
     }
 
     // access token 만료 시 refresh token으로 새 access(+새 refresh) 발급
@@ -132,24 +112,6 @@ public class UserController {
     }
 
     // === 이메일 인증 ===
-
-    // 메일에 든 링크에서 호출. token만으로 인증 (인증 안 된 사용자도 호출하므로 무인증 허용).
-    @PostMapping("/verify-email")
-    public ApiResponse verifyEmail(@RequestBody Map<String, String> body) {
-        String token = body.get("token");
-        if (token == null || token.isBlank()) {
-            throw new IllegalArgumentException("토큰이 필요합니다.");
-        }
-        String name = emailAuthService.verifyEmail(token);
-        return new ApiResponse(true, name + "님, 이메일 인증이 완료되었습니다.");
-    }
-
-    // 마이페이지에서 인증 메일 재발송 (로그인 필요).
-    @PostMapping("/resend-verification")
-    public ApiResponse resendVerification(Principal principal) {
-        emailAuthService.resendVerificationEmail(principal.getName());
-        return new ApiResponse(true, "인증 메일을 재발송했습니다.");
-    }
 
     // === 비밀번호 찾기/재설정 ===
 

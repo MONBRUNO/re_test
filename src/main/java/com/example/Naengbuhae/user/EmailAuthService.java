@@ -28,7 +28,6 @@ public class EmailAuthService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32; // base64로 약 43자
-    private static final int VERIFY_TTL_HOURS = 24;
     private static final int RESET_TTL_MINUTES = 30;
     // 회원가입 인라인 인증번호 TTL — 사용자가 받자마자 입력하는 패턴이라 짧게.
     private static final int SIGNUP_CODE_TTL_MINUTES = 10;
@@ -37,57 +36,6 @@ public class EmailAuthService {
 
     @Value("${app.mail.web-base-url:http://localhost:5173}")
     private String webBaseUrl;
-
-    // === 회원가입 직후 호출: 인증 메일 발송 ===
-    @Transactional
-    public void sendVerificationEmail(User user) {
-        if (user.isEmailVerified()) return;
-        userTokenRepository.invalidateOlder(user, UserToken.Type.EMAIL_VERIFY);
-
-        String token = generateToken();
-        userTokenRepository.save(new UserToken(
-                user, token, UserToken.Type.EMAIL_VERIFY,
-                LocalDateTime.now().plusHours(VERIFY_TTL_HOURS)
-        ));
-
-        String url = webBaseUrl + "/verify-email?token=" + token;
-        try {
-            mailService.sendHtml(
-                    user.getEmail(),
-                    "[냉부해] 이메일 인증을 완료해주세요",
-                    MailTemplates.verifyEmail(user.getName(), url)
-            );
-        } catch (Exception e) {
-            // 메일 발송 실패는 가입 자체를 막지 않음 — 마이페이지에서 재발송 가능하게.
-            log.warn("[EmailAuth] 인증 메일 발송 실패 (가입은 진행됨): {}", e.getMessage());
-        }
-    }
-
-    // 마이페이지에서 "인증 메일 다시 보내기" 클릭 시 호출.
-    @Transactional
-    public void resendVerificationEmail(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        if (user.isEmailVerified()) {
-            throw new IllegalArgumentException("이미 인증된 이메일입니다.");
-        }
-        sendVerificationEmail(user);
-    }
-
-    // 메일 링크 클릭 → 토큰 검증 + emailVerified=true.
-    @Transactional
-    public String verifyEmail(String token) {
-        UserToken t = userTokenRepository.findByTokenAndType(token, UserToken.Type.EMAIL_VERIFY)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 링크입니다."));
-        if (t.isUsed()) throw new IllegalArgumentException("이미 사용된 인증 링크입니다.");
-        if (t.isExpired()) throw new IllegalArgumentException("만료된 인증 링크입니다. 새로 요청해주세요.");
-
-        User user = t.getUser();
-        user.setEmailVerified(true);
-        t.setUsed(true);
-        log.info("[EmailAuth] 이메일 인증 완료: {}", user.getUsername());
-        return user.getName();
-    }
 
     // === 비번 찾기 요청: 메일 발송 ===
     // 보안상 "이메일이 존재하지 않습니다"는 알려주지 않음 (사용자 enumeration 방지).
