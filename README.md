@@ -2459,3 +2459,91 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
 - `FridgeService.deleteFridge` / `leaveFridge`(마지막 멤버) — 냉장고별 로그 정리
 - `UserService.deleteMyAccount` — 사용자의 actor 로그 정리
 
+---
+
+## 🚪 게스트(비로그인) 모드: 로컬 식재료 일괄 이전
+
+**배경**
+
+> "기본 냉장고 식재료 관리 기능은 로컬에 저장해서 쓰다가, 식단 관리 같은 세부 정보 넣어서 하고 싶은 사람만 로그인하게 하자"
+
+앱·웹은 로그인 없이 localStorage / SharedPreferences로 식재료를 쌓다가, 사용자가 가입하는 순간 그 데이터를 서버로 옮긴다. 백엔드는 이 일괄 이전을 받는 엔드포인트 하나만 제공.
+
+**`POST /api/ingredients/import`**
+
+- Body: `{ "items": [{name, quantity, unit, category, storage, purchaseDate, expirationDate}] }`
+- 응답: `ApiResponse(true, "식재료 N개가 이전되었습니다.")`
+- 대상 냉장고: 호출자의 기본 냉장고(`resolveFridge(user, null)`)
+- 최대 500개 제한 (`@Size(max=500)`)
+- 유통기한이 이미 지난 식재료도 허용 → `IngredientImportRequestDto.Item`에서 `@FutureOrPresent` 제거
+- 가족 알림 / `ActivityLog` 기록 스킵 — 한 사람의 마이그레이션 결과를 다른 멤버에게 푸시로 보낼 이유 없음, 통계도 노이즈
+
+**구현 위치**
+
+- `dto/IngredientImportRequestDto.java` — 래퍼 + 내부 `Item` DTO (관대한 검증)
+- `IngredientService.importIngredients(...)` — 일괄 저장
+- `IngredientController.@PostMapping("/import")`
+
+---
+
+## 📧 회원가입 인라인 이메일 인증 (코드 방식)
+
+**배경**
+
+> 이전엔 가입 후 매직 링크 메일을 보내는 방식이었는데, 사용자가 미인증 상태로 로그인할 수 있어서 의도와 어긋남. 가입 화면에서 6자리 코드를 받아 입력 → 확인 → 가입 진행 흐름으로 변경.
+
+**플로우**
+
+1. 가입 화면에서 이메일 입력 → `POST /user/email/send-code` 호출 → 6자리 코드 메일 발송
+2. 사용자가 코드 입력 → `POST /user/email/verify-code` → 검증 통과 시 `EmailVerificationCode.verified=true`
+3. 가입 폼 제출 → `signup`이 `consumeVerifiedSignupCode(email)` 호출 → 검증된 코드가 살아있어야만 통과, 사용 후 정리
+4. 가입된 user는 `emailVerified=true`로 저장 — 매직 링크 메일 추가 발송 없음
+
+**`EmailVerificationCode` 엔티티 (별도 테이블 분리 이유)**
+
+- 가입 전이라 `User` row가 없음 → `UserToken`은 user FK를 NOT NULL로 요구해서 못 씀
+- `(email)` 인덱스, `expiresAt`/`verified`로 가입 시점 일관성 검사
+- 10분 만료 (`SIGNUP_CODE_TTL_MINUTES`)
+
+**엔드포인트 (전부 미로그인 허용 — `SecurityConfig` permitAll)**
+
+- `POST /user/email/send-code` body `{email}` — 이미 가입된 이메일이면 거부
+- `POST /user/email/verify-code` body `{email, code}` — 일치 시 verified=true
+
+**로그인 측 변경**
+
+- `LoginResponse`에 `needsEmailVerification`, `email` 필드 추가
+- `/user/login`이 인증 안 된 사용자 거부 + 두 필드로 알려줌
+- `POST /user/resend-verification-public` body `{username, password}` — 미로그인 상태에서 재발송 (이메일 enumeration 방지를 위해 비번 재검증)
+
+**미세 수정**
+
+- `MailService.sendHtml`이 `MimeUtility.encodeText`로 발신자 표시명을 명시적 B-encoding — 일부 환경에서 ASCII-only로 잘못 판단해 인코딩이 빠지는 케이스 방지
+- 기본 발신자 이름을 `Naengbuhae`로 (`application.properties`) — Windows 한글 인코딩 사고 회피
+- `build.gradle` javac 인코딩을 UTF-8로 고정
+
+---
+
+## 🗑️ 회원 탈퇴 FK 정리 (409 수정)
+
+**문제**
+
+탈퇴 시 `DataIntegrityViolationException`. 원인:
+- 가입 시 자동 생성된 기본 냉장고(`Fridge.owner_id` → user) 미정리
+- `UserToken`(이메일 인증/비번 재설정) row 미정리
+
+**수정 후 `UserService.deleteMyAccount` 순서**
+
+1. **소유 냉장고 정리** — 각 owned fridge별로:
+   - `FridgeInvite` (`deleteByFridge`)
+   - `ActivityLog` (`deleteByFridge`)
+   - `Ingredient` (`deleteByFridge`) — 다른 멤버가 넣은 식재료까지 모두 정리
+   - `FridgeMember` (`deleteByFridge`)
+   - `Fridge` 자체 삭제
+2. **다른 사람 냉장고 멤버 흔적** — `fridgeMemberRepository.findByUser(user)` 순회 삭제
+3. **본인 데이터** — Ingredient/Recipe/ShoppingItem/RefreshToken/FcmToken/Notification/ActivityLog(actor)/UserToken
+4. `userRepository.delete(user)`
+5. (Kakao 가입자) `kakaoUnlinkClient.unlink(providerId)`
+
+소유한 냉장고에 다른 가족이 있어도 함께 비워진다(소유자 탈퇴 = 그 냉장고는 사라짐). 추후 소유권 이전 정책이 필요해지면 단계 1 안에서 분기.
+
