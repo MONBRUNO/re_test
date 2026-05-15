@@ -94,10 +94,12 @@ public class IngredientService {
                 fridge, user, saved.getName(), saved.getQuantity(), saved.getUnit());
 
         // 같은 냉장고 다른 멤버에게 알림 (혼자 쓰는 냉장고면 발송 대상 없음)
+        // 추가 알림은 ingredient:{id} 로 — 알림 탭 시 해당 식재료 수정 화면으로 직행
         notifyOtherMembers(fridge, user,
                 "식재료가 추가됐어요",
                 user.getName() + "님이 '" + fridge.getName() + "'에 "
-                        + saved.getName() + " " + saved.getQuantity() + saved.getUnit() + "를(을) 넣었어요.");
+                        + saved.getName() + " " + saved.getQuantity() + saved.getUnit() + "를(을) 넣었어요.",
+                "ingredient:" + saved.getId());
 
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
         return toResponseWithAllergyWarnings(saved, allergens);
@@ -147,11 +149,13 @@ public class IngredientService {
         ingredientRepository.delete(ingredient);
 
         // 공유 냉장고에서만 알림/로그 — 마이그레이션 누락 케이스(fridge null)는 본인만 보유 중이므로 스킵
+        // 삭제 알림은 ingredient 자체가 사라졌으므로 일반 목록으로만 라우팅
         if (fridge != null) {
             activityLogService.recordIngredientRemoved(fridge, user, ingName);
             notifyOtherMembers(fridge, user,
                     "식재료가 사라졌어요",
-                    user.getName() + "님이 '" + fridge.getName() + "'에서 " + ingName + "를(을) 비웠어요.");
+                    user.getName() + "님이 '" + fridge.getName() + "'에서 " + ingName + "를(을) 비웠어요.",
+                    "ingredients");
         }
     }
 
@@ -191,9 +195,11 @@ public class IngredientService {
             java.util.List<String> names = e.getValue();
             // "사과 외 N개" 식으로 짧게 요약. 단일 항목이어도 동일한 분기 사용.
             String preview = names.get(0) + (names.size() > 1 ? " 외 " + (names.size() - 1) + "개" : "");
+            // 일괄 삭제 — N개 모두 사라졌으므로 단일 식재료 deep link 의미 없음, 목록으로
             notifyOtherMembers(f, user,
                     "식재료가 사라졌어요",
-                    user.getName() + "님이 '" + f.getName() + "'에서 " + preview + "를(을) 비웠어요.");
+                    user.getName() + "님이 '" + f.getName() + "'에서 " + preview + "를(을) 비웠어요.",
+                    "ingredients");
         }
         return targets.size();
     }
@@ -277,11 +283,12 @@ public class IngredientService {
     // 식재료 이벤트(추가/삭제) 시 같은 냉장고의 다른 멤버들에게 푸시.
     // 본인은 제외 — 자기가 한 행동이라 알림이 의미 없음.
     // 멤버가 본인 1명뿐이면 sendToUsers가 빈 리스트로 no-op.
-    private void notifyOtherMembers(Fridge fridge, User actor, String title, String body) {
+    // route 형식: "ingredient:{id}"이면 클라이언트가 해당 식재료 수정 화면까지 직행, "ingredients"이면 식재료 목록 탭.
+    private void notifyOtherMembers(Fridge fridge, User actor, String title, String body, String route) {
         List<User> others = fridgeMemberRepository.findByFridge(fridge).stream()
                 .map(FridgeMember::getUser)
                 .filter(u -> !u.getUsername().equals(actor.getUsername()))
                 .toList();
-        appNotificationService.notifyUsers(others, title, body, "ingredients");
+        appNotificationService.notifyUsers(others, title, body, route);
     }
 }
