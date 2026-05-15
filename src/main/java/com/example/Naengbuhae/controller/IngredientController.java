@@ -64,4 +64,13 @@ public class IngredientController {
         int saved = ingredientService.importIngredients(requestDto, principal.getName());
         return new ApiResponse(true, "식재료 " + saved + "개가 이전되었습니다.");
     }
+
+    // POST /bulk-delete: 다중 선택 → 일괄 삭제. body: {"ids":[1,2,3]}
+    //   권한 없는 id는 조용히 건너뛰고, 실제 삭제된 개수를 반환.
+    @PostMapping("/bulk-delete")
+    public ApiResponse bulkDelete(@RequestBody java.util.Map<String, java.util.List<Long>> body,
+                                  Principal principal) {
+        int deleted = ingredientService.deleteIngredients(body.get("ids"), principal.getName());
+        return new ApiResponse(true, deleted + "개의 식재료가 삭제되었습니다.");
+    }
 }

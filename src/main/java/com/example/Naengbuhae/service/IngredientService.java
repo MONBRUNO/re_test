@@ -155,6 +155,49 @@ public class IngredientService {
         }
     }
 
+    // 3-2. 일괄 삭제 — 여러 식재료 한 번에. 멤버가 아닌 식재료는 자동으로 건너뛴다.
+    //      알림은 냉장고별로 1회만 묶어서 보내고, 활동 로그는 식재료별로 정상 기록한다.
+    @Transactional
+    public int deleteIngredients(java.util.List<Long> ids, String username) {
+        if (ids == null || ids.isEmpty()) return 0;
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
+
+        // 멤버 권한 있는 식재료만 추려서 삭제 — 권한 없는 id는 조용히 무시 (UX상 부분 실패 응답이 더 혼란).
+        java.util.List<Ingredient> targets = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            Ingredient ing = ingredientRepository.findById(id).orElse(null);
+            if (ing == null) continue;
+            Fridge f = ing.getFridge();
+            if (f != null && !fridgeMemberRepository.existsByFridgeAndUser(f, user)) continue;
+            if (f == null && !ing.getUser().getUsername().equals(user.getUsername())) continue;
+            targets.add(ing);
+        }
+        if (targets.isEmpty()) return 0;
+
+        // 냉장고별로 그룹핑 — 알림은 fridge당 1회로 묶고, 활동 로그는 식재료별로 기록.
+        java.util.Map<Fridge, java.util.List<String>> byFridge = new java.util.LinkedHashMap<>();
+        for (Ingredient ing : targets) {
+            Fridge f = ing.getFridge();
+            String name = ing.getName();
+            ingredientRepository.delete(ing);
+            if (f != null) {
+                activityLogService.recordIngredientRemoved(f, user, name);
+                byFridge.computeIfAbsent(f, k -> new java.util.ArrayList<>()).add(name);
+            }
+        }
+        for (var e : byFridge.entrySet()) {
+            Fridge f = e.getKey();
+            java.util.List<String> names = e.getValue();
+            // "사과 외 N개" 식으로 짧게 요약. 단일 항목이어도 동일한 분기 사용.
+            String preview = names.get(0) + (names.size() > 1 ? " 외 " + (names.size() - 1) + "개" : "");
+            notifyOtherMembers(f, user,
+                    "식재료가 사라졌어요",
+                    user.getName() + "님이 '" + f.getName() + "'에서 " + preview + "를(을) 비웠어요.");
+        }
+        return targets.size();
+    }
+
     // 4. 식재료 수정 — 냉장고 멤버 누구나 가능.
     //    fridgeId가 dto에 명시되면 다른 냉장고로 이동도 허용 (대상 냉장고도 멤버여야 함).
     @Transactional
