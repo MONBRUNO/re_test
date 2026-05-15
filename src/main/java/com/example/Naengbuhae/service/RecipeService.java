@@ -8,6 +8,7 @@ import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
 import com.example.Naengbuhae.repository.IngredientRepository;
+import com.example.Naengbuhae.repository.RecipeFavoriteRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
@@ -32,6 +33,7 @@ public class RecipeService {
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
     private final IngredientRepository ingredientRepository;
+    private final RecipeFavoriteRepository recipeFavoriteRepository;
 
     // 1. 레시피 저장 (새 필드 + 재료 목록)
     @Transactional
@@ -45,16 +47,32 @@ public class RecipeService {
         return recipeRepository.save(recipe).getId();
     }
 
-    // 2. 내 레시피 전체 조회 — 사용자의 알레르기 정보로 각 레시피에 경고 첨부
+    // 2. 내 레시피 전체 조회 — 사용자의 알레르기 정보로 각 레시피에 경고 첨부 + 즐겨찾기 여부 표시
     public List<RecipeResponseDto> findAllRecipes(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+        Set<Long> favoriteIds = new HashSet<>(recipeFavoriteRepository.findRecipeIdsByUser(user));
 
         return recipeRepository.findByUser(user).stream()
-                .map(recipe -> toResponseWithAllergyWarnings(recipe, allergens))
+                .map(recipe -> toResponseWithMeta(recipe, allergens, favoriteIds))
                 .toList();
+    }
+
+    // 8. 즐겨찾기 토글 — 이미 표시되어 있으면 제거, 없으면 추가. 새 상태(true=즐겨찾기) 반환.
+    @Transactional
+    public boolean toggleFavorite(Long recipeId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다."));
+        if (recipeFavoriteRepository.existsByUserAndRecipe(user, recipe)) {
+            recipeFavoriteRepository.deleteByUserAndRecipe(user, recipe);
+            return false;
+        }
+        recipeFavoriteRepository.save(new com.example.Naengbuhae.domain.RecipeFavorite(user, recipe));
+        return true;
     }
 
     // 3. 레시피 수정 (권한 체크 + 모든 필드 갱신)
@@ -93,6 +111,7 @@ public class RecipeService {
             throw new IllegalArgumentException("본인의 레시피만 삭제할 수 있습니다.");
         }
 
+        recipeFavoriteRepository.deleteByRecipe(recipe);
         recipeRepository.delete(recipe);
     }
 
@@ -101,6 +120,7 @@ public class RecipeService {
     public void deleteRecipeByAdmin(Long id) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 레시피가 없습니다. id=" + id));
+        recipeFavoriteRepository.deleteByRecipe(recipe);
         recipeRepository.delete(recipe);
     }
 
@@ -133,9 +153,10 @@ public class RecipeService {
                 .collect(Collectors.toCollection(HashSet::new));
 
         Set<String> allergens = AllergyMatcher.parseAllergens(user.getAllergies());
+        Set<Long> favoriteIds = new HashSet<>(recipeFavoriteRepository.findRecipeIdsByUser(user));
 
         return recipeRepository.findAllWithUserAndIngredients().stream()
-                .map(recipe -> buildMatch(recipe, myIngredientNames, allergens))
+                .map(recipe -> buildMatch(recipe, myIngredientNames, allergens, favoriteIds))
                 .filter(match -> match.getRecipe().getAllergyWarnings().isEmpty()) // 알레르기 매칭 레시피 제외
                 .sorted(Comparator.comparingInt(RecipeMatchResponseDto::getMatchRate).reversed())
                 .collect(Collectors.toList());
@@ -152,7 +173,8 @@ public class RecipeService {
         }
     }
 
-    private RecipeMatchResponseDto buildMatch(Recipe recipe, Set<String> myIngredientNames, Set<String> allergens) {
+    private RecipeMatchResponseDto buildMatch(Recipe recipe, Set<String> myIngredientNames,
+                                              Set<String> allergens, Set<Long> favoriteIds) {
         List<String> has = new ArrayList<>();
         List<String> missing = new ArrayList<>();
         boolean hasAllRequired = true;
@@ -172,12 +194,12 @@ public class RecipeService {
             matchRate = (int) Math.round((has.size() * 100.0) / total);
         }
 
-        RecipeResponseDto recipeDto = toResponseWithAllergyWarnings(recipe, allergens);
+        RecipeResponseDto recipeDto = toResponseWithMeta(recipe, allergens, favoriteIds);
         return new RecipeMatchResponseDto(recipeDto, matchRate, has, missing);
     }
 
-    // 레시피 → DTO 변환 + 알레르기 키워드와 매칭된 결과를 allergyWarnings에 채움
-    private RecipeResponseDto toResponseWithAllergyWarnings(Recipe recipe, Set<String> allergens) {
+    // 레시피 → DTO 변환 + 알레르기 키워드 매칭 + 즐겨찾기 여부 채움
+    private RecipeResponseDto toResponseWithMeta(Recipe recipe, Set<String> allergens, Set<Long> favoriteIds) {
         RecipeResponseDto dto = new RecipeResponseDto(recipe);
         if (!allergens.isEmpty()) {
             List<String> ingredientNames = recipe.getIngredients().stream()
@@ -185,6 +207,7 @@ public class RecipeService {
                     .toList();
             dto.setAllergyWarnings(new ArrayList<>(AllergyMatcher.findMatches(allergens, ingredientNames)));
         }
+        dto.setFavorite(favoriteIds.contains(recipe.getId()));
         return dto;
     }
 

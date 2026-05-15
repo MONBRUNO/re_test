@@ -29,6 +29,10 @@ public class RecipeResponseDto {
     @Setter
     private List<String> allergyWarnings = Collections.emptyList();
 
+    // 현재 로그인 사용자가 즐겨찾기로 표시했는지. 서비스 계층에서 채워줌.
+    @Setter
+    private boolean favorite = false;
+
     public RecipeResponseDto(Recipe recipe) {
         this.id = recipe.getId();
         this.name = recipe.getName();

@@ -57,4 +57,11 @@ public class RecipeController {
     public AiRecipeResponseDto getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
     }
+
+    // POST: 즐겨찾기 토글 — 응답으로 새 상태(true=즐겨찾기) 반환.
+    @PostMapping("/{id}/favorite/toggle")
+    public java.util.Map<String, Boolean> toggleFavorite(@PathVariable Long id, Principal principal) {
+        boolean now = recipeService.toggleFavorite(id, principal.getName());
+        return java.util.Map.of("favorite", now);
+    }
 }

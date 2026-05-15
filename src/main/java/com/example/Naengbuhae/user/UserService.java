@@ -9,6 +9,7 @@ import com.example.Naengbuhae.repository.FridgeMemberRepository;
 import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.NotificationRepository;
+import com.example.Naengbuhae.repository.RecipeFavoriteRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
 import com.example.Naengbuhae.util.CalorieCalculator;
@@ -40,6 +41,7 @@ public class UserService {
     private final ActivityLogRepository activityLogRepository;
     private final FridgeInviteRepository fridgeInviteRepository;
     private final UserTokenRepository userTokenRepository;
+    private final RecipeFavoriteRepository recipeFavoriteRepository;
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
@@ -187,6 +189,9 @@ public class UserService {
 
         // 3. 본인이 만든 데이터 일괄 정리. 1번에서 owned-fridge 한정 cleanup이 끝났으므로 여기는 잔여물(다른 냉장고에 추가한 식재료 등).
         ingredientRepository.deleteByUser(user);
+        // 즐겨찾기 — 본인 것 + 본인이 만든 레시피를 다른 사람이 찜한 것 모두 정리해야 recipeRepository.deleteByUser 가 FK 위반 없이 동작.
+        recipeFavoriteRepository.deleteByUser(user);
+        recipeFavoriteRepository.deleteByRecipeOwner(user);
         recipeRepository.deleteByUser(user);
         shoppingItemRepository.deleteByUser(user);
         refreshTokenService.revokeAllForUser(user);
