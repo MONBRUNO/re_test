@@ -16,9 +16,9 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
-    // ✨ 1. @Async: 메인 로직 속도 저하 방지 (백그라운드에서 실행)
+    // ✨ 1. @Async("auditTaskExecutor"): 전용 스레드 풀을 사용하여 서버 자원 보호 및 메인 로직 속도 저하 방지
     // ✨ 2. REQUIRES_NEW: 메인 로직이 롤백되어도 감사 로그는 무조건 DB에 남김!
-    @Async
+    @Async("auditTaskExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAction(String adminName, String action, String targetType, Long targetId, String description, String ip) {
         try {

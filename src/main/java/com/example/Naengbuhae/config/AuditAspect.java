@@ -43,10 +43,13 @@ public class AuditAspect {
             // ✨ 1. idParamName이 지정된 경우: 파라미터 이름으로 찾기
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             String[] parameterNames = signature.getParameterNames();
-            for (int i = 0; i < parameterNames.length; i++) {
-                if (parameterNames[i].equals(idParamName) && args[i] instanceof Long) {
-                    targetId = (Long) args[i];
-                    break;
+            
+            if (parameterNames != null) {
+                for (int i = 0; i < parameterNames.length; i++) {
+                    if (parameterNames[i].equals(idParamName) && args[i] instanceof Long) {
+                        targetId = (Long) args[i];
+                        break;
+                    }
                 }
             }
         } else if (args.length > 0 && args[0] instanceof Long) {
