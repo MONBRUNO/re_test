@@ -78,6 +78,21 @@ public class ShoppingItemService {
         }
         shoppingItemRepository.delete(shoppingItem);
     }
+
+    // 4-2. 다중 선택 일괄 삭제. 본인 소유 항목만 삭제, 그 외 id는 조용히 무시.
+    @Transactional
+    public int deleteShoppingItems(List<Long> ids, String username) {
+        if (ids == null || ids.isEmpty()) return 0;
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
+
+        List<ShoppingItem> targets = shoppingItemRepository.findAllById(ids).stream()
+                .filter(it -> it.getUser().getUsername().equals(user.getUsername()))
+                .toList();
+        if (targets.isEmpty()) return 0;
+        shoppingItemRepository.deleteAll(targets);
+        return targets.size();
+    }
     // ✨ 5. 마법의 API: 구매 완료된 항목을 냉장고로 옮기기!
     @Transactional
     public String moveCheckedItemsToFridge(String username) {

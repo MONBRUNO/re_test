@@ -47,4 +47,12 @@ public class ShoppingListController {
     public String moveToFridge(Principal principal) {
         return shoppingItemService.moveCheckedItemsToFridge(principal.getName());
     }
+
+    // 다중 선택 일괄 삭제. body: {"ids": [1, 2, 3]}
+    @PostMapping("/bulk-delete")
+    public String bulkDelete(@RequestBody java.util.Map<String, java.util.List<Long>> body,
+                             Principal principal) {
+        int deleted = shoppingItemService.deleteShoppingItems(body.get("ids"), principal.getName());
+        return deleted + "개의 장보기 항목이 삭제되었습니다.";
+    }
 }
