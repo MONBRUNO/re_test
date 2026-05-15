@@ -2616,3 +2616,52 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
 
 `UserToken.Type.EMAIL_VERIFY` enum 값은 기존 row 호환을 위해 보존(주석으로 사용 중단 명시). 비밀번호 재설정 흐름은 여전히 `UserToken`을 사용하므로 테이블 자체는 유지.
 
+---
+
+## 🛒 장보기 — 자동 제안 + 일괄 추가
+
+**`GET /api/shopping-list/suggestions?fridgeId=X&limit=5`**
+
+가족이 자주 비웠는데 지금 냉장고에도 없고 장보기에도 없는 식재료를 카운트 내림차순으로 반환.
+
+- `ActivityLog`의 `INGREDIENT_REMOVED`(최근 60일) 카운트를 활용 — 활동 통계가 단순 회고에서 **실제 가치**로 연결
+- 현재 냉장고 식재료 이름 set + 장보기 이름 set으로 필터링 → 이미 있는 건 자동 제외
+- `fridgeId` 없으면 사용자 기본 냉장고, `limit`는 1~20으로 clamp
+- 반환: `[{name, count}]`
+
+**`POST /api/shopping-list/bulk-add`**
+
+레시피 상세의 "부족한 재료 한 번에 담기" 등 일괄 추가. body: `{items: [{name, quantity, unit}, ...]}`.
+
+- 같은 이름이 이미 장보기에 있으면 자동 건너뜀(UX상 중복 항목 의미 없음)
+- 실제 추가된 개수만 반환
+
+---
+
+## ❤️ 레시피 즐겨찾기
+
+사용자가 마음에 들어 "하트" 누른 레시피.
+
+**`RecipeFavorite` 엔티티**
+
+- `(user, recipe)` unique 조합 — 중복 row 방지
+- `user_id` 인덱스로 사용자별 목록 조회 빠름
+- 토글은 row 추가/삭제로 처리
+
+**`POST /api/recipes/{id}/favorite/toggle`**
+
+- 이미 있으면 row 삭제 + `{favorite: false}` 응답
+- 없으면 row 추가 + `{favorite: true}` 응답
+
+**`RecipeResponseDto.favorite` 필드 추가**
+
+- `findAllRecipes`와 `recommendRecipes` 모두 사용자의 favorite id set을 한 번에 가져와서 DTO에 채움 (N+1 회피)
+- 클라이언트가 매번 별도 GET 호출 없이 카드 렌더 시점에 하트 상태 표시 가능
+
+**라이프사이클 정리**
+
+- `RecipeService.deleteRecipe` / `deleteRecipeByAdmin` 시 `recipeFavoriteRepository.deleteByRecipe(recipe)` 선행
+- `UserService.deleteMyAccount`에서 두 단계로 cleanup:
+  - `deleteByUser(user)` — 본인이 찍은 즐겨찾기
+  - `deleteByRecipeOwner(user)` — 다른 사람이 본인 레시피에 찍은 즐겨찾기 (이걸 먼저 안 비우면 `recipeRepository.deleteByUser`가 FK 위반)
+
