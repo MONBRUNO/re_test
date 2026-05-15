@@ -56,6 +56,14 @@ public class ShoppingListController {
         return deleted + "개의 장보기 항목이 삭제되었습니다.";
     }
 
+    // 일괄 추가 — 레시피 상세 "부족한 재료 추가" 등. body: {"items": [{name, quantity, unit}, ...]}
+    @PostMapping("/bulk-add")
+    public String bulkAdd(@Valid @RequestBody java.util.Map<String, java.util.List<ShoppingItemRequestDto>> body,
+                          Principal principal) {
+        int added = shoppingItemService.addShoppingItems(body.get("items"), principal.getName());
+        return added + "개의 장보기 항목이 추가되었습니다.";
+    }
+
     // 자동 제안 — 가족이 자주 비웠는데 지금 냉장고에도 없고 장보기에도 없는 식재료.
     @GetMapping("/suggestions")
     public java.util.List<java.util.Map<String, Object>> suggestions(

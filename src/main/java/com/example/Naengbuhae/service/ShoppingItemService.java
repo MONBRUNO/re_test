@@ -92,6 +92,28 @@ public class ShoppingItemService {
         shoppingItemRepository.delete(shoppingItem);
     }
 
+    // 4-4. 일괄 추가 — 레시피 상세에서 "부족한 재료 한 번에 담기"용.
+    //      이미 같은 이름이 장보기에 있으면 중복 추가 안 함 (UX상 N번 추가는 의미 없음).
+    @Transactional
+    public int addShoppingItems(List<ShoppingItemRequestDto> items, String username) {
+        if (items == null || items.isEmpty()) return 0;
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
+
+        Set<String> existing = shoppingItemRepository.findByUser(user).stream()
+                .map(ShoppingItem::getName)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        int added = 0;
+        for (ShoppingItemRequestDto dto : items) {
+            if (existing.contains(dto.getName())) continue;
+            shoppingItemRepository.save(dto.toEntity(user));
+            existing.add(dto.getName());
+            added++;
+        }
+        return added;
+    }
+
     // 4-3. 장보기 자동 제안 — 가족이 자주 비운(INGREDIENT_REMOVED) 식재료 중
     //      "현재 냉장고에 없고" + "이미 장보기에 없는" 이름만 골라서 카운트 내림차순으로 반환.
     //      기간은 최근 60일.
