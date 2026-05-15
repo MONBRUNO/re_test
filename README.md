@@ -2547,3 +2547,72 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
 
 소유한 냉장고에 다른 가족이 있어도 함께 비워진다(소유자 탈퇴 = 그 냉장고는 사라짐). 추후 소유권 이전 정책이 필요해지면 단계 1 안에서 분기.
 
+---
+
+## 🔐 비밀번호 변경 (`POST /user/me/password`)
+
+이메일+비번 가입자의 비밀번호를 로그인 상태에서 변경.
+
+**`PasswordChangeRequest`**
+
+```
+{ "currentPassword": "...", "newPassword": "..." }
+```
+
+**`UserService.changePassword`**
+
+1. 사용자 조회 + `provider == LOCAL` 검증 — 소셜 가입자는 placeholder 비번이라 변경 의미 없음
+2. `passwordEncoder.matches(currentPassword, user.getPassword())` — 현재 비번 일치 확인
+3. 새 비번 형식 검증 — 한글 금지 + `PASSWORD_REGEX` (영소문자/숫자/특수문자, 8자 이상)
+4. 동일 비번 거부 — `passwordEncoder.matches(newPassword, user.getPassword())`
+5. `user.changePassword(passwordEncoder.encode(newPassword))`
+
+토큰 재발급은 하지 않음 — 현재 세션은 유지되고 다음 로그인부터 새 비번 사용.
+
+**`UserResponseDto.provider` 노출**
+
+클라이언트가 "비밀번호 변경" 같은 LOCAL 전용 UI를 분기하기 위해 `OAuthProvider` 값을 응답에 포함시켰다.
+
+---
+
+## 🧹 일괄 삭제 (식재료/장보기)
+
+다중 선택 UX(클라이언트)와 짝을 이룬 서버 측 일괄 삭제 엔드포인트.
+
+**식재료 `POST /api/ingredients/bulk-delete`** — body `{ids: [1, 2, 3]}`
+
+- 본인이 멤버인 냉장고 항목만 삭제, 권한 없는 id는 조용히 건너뜀
+- 활동 로그는 식재료별로 정상 기록 (통계 정확도 유지)
+- 가족 알림은 냉장고별로 1회만 묶어 발송 — `"사과 외 N개 비웠어요"` 형식 (스팸 방지)
+
+**장보기 `POST /api/shopping-list/bulk-delete`** — body `{ids: [1, 2, 3]}`
+
+- 본인 소유 항목만 삭제, 그 외 id는 무시
+- 장보기는 가족 공유 개념이 없어서 알림 없음
+
+---
+
+## 🔗 알림 deep link — `route="ingredient:{id}"`
+
+식재료 추가 푸시를 탭하면 해당 식재료 수정 화면까지 직행하도록 `route` 필드 형식 확장.
+
+- `IngredientService.saveIngredient`가 알림 시 `route = "ingredient:" + saved.getId()` 전달
+- 삭제(단일/일괄) 알림은 식재료 자체가 사라졌으므로 `route = "ingredients"` (목록 폴백)
+- 인앱 알림 센터(`Notification` 엔티티)에도 같은 route 문자열이 그대로 저장됨 → 스키마 변경 없이 deep link 가능
+
+기존 `notifyOtherMembers(fridge, actor, title, body)` 시그니처에 `route` 매개변수 추가됨. 호출자가 의미에 맞게 선택.
+
+---
+
+## 🧹 죽은 매직 링크 이메일 인증 코드 정리
+
+코드 기반 인증으로 전환되며 안 쓰이는 흔적 제거:
+
+- 엔드포인트: `/user/verify-email`, `/user/resend-verification`, `/user/resend-verification-public` 삭제
+- `EmailAuthService.sendVerificationEmail` / `resendVerificationEmail` / `verifyEmail` 메서드 삭제 + `VERIFY_TTL_HOURS` 상수 삭제
+- `MailTemplates.verifyEmail` (매직 링크 템플릿) 삭제
+- `LoginResponse`에서 `needsEmailVerification` / `email` 필드 삭제 → `/user/login`의 emailVerified 검사도 함께 제거 (가입 흐름이 강제하므로 불필요)
+- `SecurityConfig` permitAll에서 verify-email, resend-verification-public 제거
+
+`UserToken.Type.EMAIL_VERIFY` enum 값은 기존 row 호환을 위해 보존(주석으로 사용 중단 명시). 비밀번호 재설정 흐름은 여전히 `UserToken`을 사용하므로 테이블 자체는 유지.
+
