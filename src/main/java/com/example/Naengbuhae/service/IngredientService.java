@@ -4,6 +4,7 @@ import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.FridgeMember;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
+import com.example.Naengbuhae.dto.IngredientImportRequestDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.repository.FridgeMemberRepository;
@@ -184,6 +185,28 @@ public class IngredientService {
 
     public long countIngredients() {
         return ingredientRepository.count();
+    }
+
+    // 6. 일괄 import — 게스트 → 로그인 전환 시 로컬 데이터를 한 번에 옮긴다.
+    //    사용자의 기본 냉장고에 추가. 가족 알림/활동 로그는 스킵 (마이그레이션은 의미 없는 노이즈).
+    //    반환값: 실제로 저장된 개수.
+    @Transactional
+    public int importIngredients(IngredientImportRequestDto request, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
+
+        Fridge fridge = resolveFridge(user, null);
+
+        int saved = 0;
+        for (IngredientImportRequestDto.Item item : request.getItems()) {
+            Ingredient entity = new Ingredient(
+                    user, item.getName(), item.getQuantity(), item.getExpirationDate(),
+                    item.getCategory(), item.getUnit(), item.getStorage(), item.getPurchaseDate());
+            entity.setFridge(fridge);
+            ingredientRepository.save(entity);
+            saved++;
+        }
+        return saved;
     }
 
     // 5. 유통기한 임박 식재료 — 특정 냉장고(또는 기본) 기준.

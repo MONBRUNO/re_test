@@ -1,6 +1,7 @@
 package com.example.Naengbuhae.controller;
 
 import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
+import com.example.Naengbuhae.dto.IngredientImportRequestDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
 import com.example.Naengbuhae.service.IngredientService;
@@ -53,5 +54,14 @@ public class IngredientController {
     @PutMapping("/{id}")
     public Long update(@PathVariable Long id, @Valid @RequestBody IngredientRequestDto requestDto, Principal principal) {
         return ingredientService.updateIngredient(id, requestDto, principal.getName());
+    }
+
+    // POST /import: 게스트 → 로그인 전환 시 로컬에 있던 식재료를 일괄 이전.
+    //   응답: 저장된 개수.
+    @PostMapping("/import")
+    public ApiResponse importIngredients(@Valid @RequestBody IngredientImportRequestDto requestDto,
+                                         Principal principal) {
+        int saved = ingredientService.importIngredients(requestDto, principal.getName());
+        return new ApiResponse(true, "식재료 " + saved + "개가 이전되었습니다.");
     }
 }
