@@ -19,6 +19,8 @@ public class UserResponseDto {
     private UserRole role;
     private Integer recommendedCalories;
     private boolean emailVerified;
+    // LOCAL/KAKAO/NAVER/GOOGLE — 클라이언트가 "비밀번호 변경" 등 LOCAL 전용 UI를 가릴 때 사용.
+    private OAuthProvider provider;
 
     public UserResponseDto(User user) {
         this.id = user.getId();
@@ -35,5 +37,6 @@ public class UserResponseDto {
         this.role = user.getRole();
         this.recommendedCalories = user.getRecommendedCalories();
         this.emailVerified = user.isEmailVerified();
+        this.provider = user.getProvider();
     }
 }

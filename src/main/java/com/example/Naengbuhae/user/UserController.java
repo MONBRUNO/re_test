@@ -104,6 +104,15 @@ public class UserController {
         return userService.updateMyProfile(principal.getName(), request);
     }
 
+    // 로그인된 사용자의 비밀번호 변경
+    @PostMapping("/me/password")
+    public ApiResponse changePassword(@Valid @RequestBody PasswordChangeRequest request,
+                                      Principal principal) {
+        userService.changePassword(principal.getName(),
+                request.getCurrentPassword(), request.getNewPassword());
+        return new ApiResponse(true, "비밀번호가 변경되었습니다.");
+    }
+
     // 회원 탈퇴: 본인의 모든 식재료/레시피/장보기까지 함께 삭제
     @DeleteMapping("/me")
     public ApiResponse deleteMe(Principal principal) {

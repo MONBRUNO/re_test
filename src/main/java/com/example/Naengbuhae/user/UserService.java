@@ -129,6 +129,33 @@ public class UserService {
         return name + "의 냉장고";
     }
 
+    // 로그인된 사용자의 비밀번호 변경. 현재 비번 일치 확인 + 새 비번 형식 검증 + 동일 비번 거부.
+    // OAuth 가입자는 password가 placeholder라 의미 없으므로 막는다.
+    @Transactional
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        if (user.getProvider() != OAuthProvider.LOCAL) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 변경을 지원하지 않아요.");
+        }
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("새 비밀번호를 입력해주세요.");
+        }
+        if (newPassword.matches(".*[ㄱ-ㅎㅏ-ㅣ가-힣].*")) {
+            throw new IllegalArgumentException("비밀번호에 한글은 사용할 수 없습니다.");
+        }
+        if (!newPassword.matches(PASSWORD_REGEX)) {
+            throw new IllegalArgumentException("비밀번호는 8자 이상이며, 영어 소문자, 숫자, 특수문자를 포함해야 합니다.");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new IllegalArgumentException("이전과 동일한 비밀번호입니다.");
+        }
+        user.changePassword(passwordEncoder.encode(newPassword));
+    }
+
     public User login(String username, String password) {
         return userRepository.findByUsername(username)
                 .filter(user -> passwordEncoder.matches(password, user.getPassword()))
