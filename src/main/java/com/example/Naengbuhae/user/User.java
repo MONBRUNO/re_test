@@ -63,7 +63,16 @@ public class User {
     // OAuth 제공자가 부여한 고유 ID (LOCAL은 null)
     private String providerId;
 
+    // ✨ 정지 여부 필드 추가
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isBanned = false;
+
     protected User() {
+    }
+
+    // ✨ 객체지향의 캡슐화를 지키기 위한 도메인 비즈니스 메서드
+    public void changeBanStatus(boolean status) {
+        this.isBanned = status;
     }
 
     // 일반 회원가입용 생성자

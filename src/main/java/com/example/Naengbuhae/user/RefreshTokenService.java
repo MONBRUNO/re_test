@@ -69,8 +69,14 @@ public class RefreshTokenService {
             throw new IllegalArgumentException("만료된 refresh token입니다. 다시 로그인해주세요.");
         }
 
-        // 3) 정상 rotation: 기존을 폐기 처리(delete가 아니라 revokedAt 마킹)하고 새 토큰 발급
+        // ✨ 토큰 재발급 방어벽 추가
         User user = stored.getUser();
+        if (user.isBanned()) {
+            refreshTokenRepository.deleteByUser(user); // 남은 흔적도 청소
+            throw new IllegalArgumentException("정지된 계정입니다. 세션을 연장할 수 없습니다.");
+        }
+
+        // 3) 정상 rotation: 기존을 폐기 처리(delete가 아니라 revokedAt 마킹)하고 새 토큰 발급
         stored.revoke();
 
         String newAccessToken = jwtUtil.createToken(user.getUsername(), user.getRole());

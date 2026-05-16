@@ -161,7 +161,29 @@ public class UserService {
     public User login(String username, String password) {
         return userRepository.findByUsername(username)
                 .filter(user -> passwordEncoder.matches(password, user.getPassword()))
+                .filter(user -> {
+                    // ✨ 로그인 방어벽 추가
+                    if (user.isBanned()) {
+                        throw new IllegalArgumentException("정지된 계정입니다. 관리자에게 문의하세요.");
+                    }
+                    return true;
+                })
                 .orElse(null);
+    }
+
+    @Transactional
+    public void updateUserBanStatus(Long userId, boolean ban) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+        
+        // 1. 유저 상태 변경
+        user.changeBanStatus(ban);
+        
+        // 2. ✨ 핵심 시니어 디테일: 유저를 정지(ban=true)하는 경우, 
+        // 기존에 발급된 모든 리프레시 토큰을 제거하여 현재 로그인된 세션을 강제로 만료시킵니다.
+        if (ban) {
+            refreshTokenService.revokeAllForUser(user);
+        }
     }
 
     @Transactional

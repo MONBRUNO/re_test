@@ -54,4 +54,18 @@ public class AdminController {
                 ingredientService.countIngredients()
         );
     }
+
+    @PutMapping("/users/{userId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    // 😎 우리가 만든 마법의 감사 로그 어노테이션 발동!
+    @Audit(action = "BAN_USER", targetType = "USER", idParamName = "userId", description = "관리자 권한으로 특정 유저 계정 정지 혹은 정지 해제")
+    public ApiResponse toggleUserBan(
+            @PathVariable Long userId, 
+            @RequestParam boolean ban) {
+        
+        userService.updateUserBanStatus(userId, ban);
+        
+        String message = ban ? "해당 사용자가 정지 처리되었습니다." : "해당 사용자의 정지가 해제되었습니다.";
+        return new ApiResponse(true, message);
+    }
 }
