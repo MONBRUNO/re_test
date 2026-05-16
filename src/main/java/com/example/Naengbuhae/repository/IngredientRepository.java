@@ -22,4 +22,7 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
     void deleteByUser(User user);
 
     void deleteByFridge(Fridge fridge);
+
+    // ✨ 4단계 핵심: 이름에 특정 키워드가 '포함된' 식재료를 전부 찾아오는 마법의 메서드!
+    List<Ingredient> findByNameContaining(String keyword);
 }

@@ -1,11 +1,15 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.Ingredient;
+import com.example.Naengbuhae.repository.IngredientRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -15,17 +19,19 @@ public class FoodSafetyScheduler {
     private String apiKey;
 
     private final RestTemplate restTemplate;
+    // ✨ 1. DB 창고지기(Repository) 섭외
+    private final IngredientRepository ingredientRepository;
 
-    public FoodSafetyScheduler() {
-        // ✨ 복잡한 컨버터 설정 없이 순정 RestTemplate 사용!
-        // Jackson이 HTTP 응답 바이트를 분석하여 인코딩 문제를 자동으로 해결해줍니다.
+    // ✨ 2. 생성자에 창고지기 의존성 주입
+    public FoodSafetyScheduler(IngredientRepository ingredientRepository) {
         this.restTemplate = new RestTemplate();
+        this.ingredientRepository = ingredientRepository;
     }
 
+    // (실무 적용 시 cron = "0 0 3 * * *" 로 변경하여 매일 새벽 3시에만 돌게 설정)
     @Scheduled(cron = "0/10 * * * * *")
     public void checkRecalledFoods() {
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("[Scheduler] 식약처 API 키가 설정되지 않았습니다. .env의 FOOD_SAFETY_API_KEY를 확인해주세요.");
             return;
         }
 
@@ -35,29 +41,47 @@ public class FoodSafetyScheduler {
             // 💡 실전: 최신 데이터 100개를 가져오도록 주소 변경 (1/100)
             String url = "http://openapi.foodsafetykorea.go.kr/api/" + apiKey + "/I0490/json/1/100";
             
-            // ✨ 핵심: String.class가 아니라 JsonNode.class로 바로 받아 인코딩 충돌 방지!
+            // ✨ JsonNode로 직접 받아 인코딩 무결성 확보
             JsonNode response = restTemplate.getForObject(url, JsonNode.class);
-            
+
             if (response != null) {
                 // 💡 API 명세서 분석 적용: I0490 -> row 배열 안에 실제 데이터가 있음!
                 JsonNode rows = response.path("I0490").path("row");
 
-                log.info("총 {}개의 회수 대상 식품 데이터를 성공적으로 가져왔습니다!", rows.size());
+                if (!rows.isMissingNode()) {
+                    log.info("총 {}개의 회수 대상 식품 데이터를 성공적으로 가져왔습니다!", rows.size());
 
-                // 💡 배열을 돌면서 위험 식품 이름과 사유 추출하기
-                for (JsonNode row : rows) {
-                    String productName = row.path("PRDTNM").asText(); // 1번: 제품명
-                    String companyName = row.path("BSSHNM").asText(); // 3번: 제조업체명
-                    String reason = row.path("RTRVLPRVNS").asText();  // 2번: 회수사유
+                    // 💡 배열을 돌면서 위험 식품 추출 및 DB 스캔!
+                    for (JsonNode row : rows) {
+                        String productName = row.path("PRDTNM").asText(); // 제품명
+                        String companyName = row.path("BSSHNM").asText(); // 제조업체명
+                        String reason = row.path("RTRVLPRVNS").asText();  // 회수사유
 
-                    // 나중에는 여기서 우리 DB(Ingredient)를 뒤져서 productName이 포함된 식재료가 있는지 찾을 겁니다!
-                    // 지금은 일단 추출이 잘 되는지 확인!
-                    log.info("🚨 [위험식품 감지] 제품명: {}, 업체명: {}, 사유: {}", productName, companyName, reason);
+                        if (productName.isBlank()) continue;
+
+                        // ✨ 3. 스캐너 작동! 식약처 제품명이 포함된 식재료가 우리 DB에 있는지 검색
+                        List<Ingredient> matchedIngredients = ingredientRepository.findByNameContaining(productName);
+
+                        // 🚨 일치하는 식재료(위험 식품)가 유저의 냉장고에 존재한다면?!
+                        if (!matchedIngredients.isEmpty()) {
+                            for (Ingredient ingredient : matchedIngredients) {
+                                String targetUser = ingredient.getUser().getUsername();
+                                
+                                log.warn("=======================================================");
+                                log.warn("🚨 [초긴급] 유저 '{}'의 냉장고에서 위험 식품 발견!!!", targetUser);
+                                log.warn("👉 등록된 이름: {}", ingredient.getName());
+                                log.warn("👉 식약처 적발 제품: {} ({})", productName, companyName);
+                                log.warn("👉 회수 사유: {}", reason);
+                                log.warn("=======================================================");
+
+                                // TODO: 다음 스텝에서 여기에 NotificationService 연동을 진행할 예정입니다!
+                            }
+                        }
+                    }
                 }
             }
-
         } catch (Exception e) {
-            log.error("[Scheduler] 식약처 API 호출 중 에러 발생: {}", e.getMessage());
+            log.error("[Scheduler] 식약처 API 통신 및 대조 중 에러 발생: {}", e.getMessage());
         }
     }
 }
