@@ -28,7 +28,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/user/signup",        Bandwidth.builder()
                     .capacity(5).refillIntervally(5, Duration.ofMinutes(1)).build(),
             "/user/token/refresh", Bandwidth.builder()
-                    .capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build()
+                    .capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build(),
+            "/api/ingredients/recognize", Bandwidth.builder()
+                    .capacity(5).refillIntervally(5, Duration.ofMinutes(1)).build(),
+            "/api/recipes/ai-recommendations", Bandwidth.builder()
+                    .capacity(5).refillIntervally(5, Duration.ofMinutes(1)).build()
     );
 
     // ✨ 시니어급 방어막: 무한정 쌓이는 Map 대신 똑똑한 Caffeine Cache 도입!
