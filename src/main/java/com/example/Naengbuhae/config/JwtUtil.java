@@ -64,29 +64,22 @@ public class JwtUtil {
         return claims.getSubject();
     }
 
-    // 🔥 Hotfix 3: 토큰에서 권한 추출 시 예외 흡수 및 USER 강등 로직
+    // 🔥 보안 패치: 토큰에서 권한 추출 시 엄격한 검증
+    // 이제 권한 정보가 없거나 잘못된 경우 예외를 그대로 던져 인증 필터에서 401을 처리하도록 합니다.
     public UserRole getRoleFromToken(String token) {
+        Claims claims = getClaims(token);
+        Object roleObj = claims.get(AUTHORIZATION_KEY);
+
+        if (roleObj == null || roleObj.toString().trim().isEmpty()) {
+            log.error("[JWT Error] 토큰에 권한 정보(auth)가 누락되었습니다.");
+            throw new RuntimeException("토큰 권한 정보가 없습니다.");
+        }
+
         try {
-            Claims claims = getClaims(token);
-            Object roleObj = claims.get(AUTHORIZATION_KEY);
-
-            // 권한 정보가 없으면 기본 USER 권한 부여
-            if (roleObj == null || roleObj.toString().trim().isEmpty()) {
-                log.warn("[JWT Warning] 토큰에 권한 정보가 없어 USER 권한으로 기본 할당합니다.");
-                return UserRole.USER;
-            }
-
-            try {
-                return UserRole.valueOf(roleObj.toString());
-            } catch (IllegalArgumentException e) {
-                // "SUPERMAN" 같은 이상한 권한이 들어와도 죽지 않고 USER로 강제 강등!
-                log.error("[JWT Error] 알 수 없는 권한 명칭입니다. USER로 강등 조치합니다. 원인: {}", e.getMessage());
-                return UserRole.USER;
-            }
-        } catch (Exception e) {
-            // 파싱 중 다른 문제가 생겨도 일단 최소 권한 부여
-            log.error("[JWT Error] 권한 파싱 실패. USER로 강등 조치. 원인: {}", e.getMessage());
-            return UserRole.USER;
+            return UserRole.valueOf(roleObj.toString());
+        } catch (IllegalArgumentException e) {
+            log.error("[JWT Error] 유효하지 않은 권한 명칭: {}", roleObj);
+            throw new RuntimeException("유효하지 않은 유저 권한입니다.");
         }
     }
 

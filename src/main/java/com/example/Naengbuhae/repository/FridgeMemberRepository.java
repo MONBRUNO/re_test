@@ -12,6 +12,7 @@ public interface FridgeMemberRepository extends JpaRepository<FridgeMember, Long
 
     Optional<FridgeMember> findByFridgeAndUser(Fridge fridge, User user);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user"})
     List<FridgeMember> findByFridge(Fridge fridge);
 
     List<FridgeMember> findByUser(User user);

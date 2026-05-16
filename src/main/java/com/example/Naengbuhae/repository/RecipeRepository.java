@@ -11,25 +11,26 @@ import java.util.List;
 
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
-    // 특정 사용자가 등록한 레시피. user는 EntityGraph로 즉시 fetch(N+1 방지),
-    // ingredients/steps는 application.properties의 batch_fetch_size로 묶어 로드.
+    // 특정 사용자가 등록한 레시피. 단일 객체인 user만 한 방에 가져오고,
+    // 컬렉션(ingredients, steps)은 batch_size(100) 설정으로 최적화 로드.
     @EntityGraph(attributePaths = {"user"})
     List<Recipe> findByUser(User user);
 
     void deleteByUser(User user);
 
-    // [최적화] 레시피와 유저를 한 방에 가져오는 조인 페치! (N+1 방지)
+    // [최적화] 레시피와 작성자(User)를 한 방에 가져오기 (N+1 방지)
+    // 컬렉션은 batch_size 설정에 따라 필요할 때 IN 쿼리로 묶어서 가져옴.
     @Query("SELECT r FROM Recipe r JOIN FETCH r.user")
     List<Recipe> findAllWithUser();
 
-    // [추천용] 모든 레시피 + 작성자 + 재료까지 한 번에 가져오기
-    // distinct로 컬렉션 join 시 중복 제거
-    @Query("SELECT DISTINCT r FROM Recipe r JOIN FETCH r.user LEFT JOIN FETCH r.ingredients")
+    // [추천용] 작성자(User)만 한 방에 가져오고, 재료는 배치 페치 활용
+    @Query("SELECT r FROM Recipe r JOIN FETCH r.user")
     List<Recipe> findAllWithUserAndIngredients();
 
-    // ✨ N+1 방어막: 레시피를 가져올 때, '작성자(user)'와 '재료 목록(ingredients)'을 JOIN으로 한방에 끌어옵니다!
-    // 이렇게 하면 레시피가 100개든 1000개든 쿼리가 딱 1번만 나갑니다.
-    @EntityGraph(attributePaths = {"user", "ingredients"})
+    // ✨ [N+1 & MultipleBagFetch 방어]
+    // 두 개 이상의 컬렉션을 Fetch Join하면 Cartesian Product가 발생하여 메모리 폭발 위험이 있음.
+    // ManyToOne인 user만 Fetch Join하고, 컬렉션은 default_batch_fetch_size=100 설정으로 IN 쿼리 처리함.
+    @EntityGraph(attributePaths = {"user"})
     @Query("SELECT r FROM Recipe r")
     List<Recipe> findAllOptimized();
 }

@@ -12,9 +12,11 @@ public interface FridgeRepository extends JpaRepository<Fridge, Long> {
 
     // 특정 사용자가 멤버로 가입된 모든 냉장고 (소유 + 공유 받은 것 합쳐서).
     // FridgeMember 테이블 join — owner도 자기 fridge의 멤버이므로 결과에 포함됨.
+    // ✨ [N+1 박멸] EntityGraph를 사용하여 members와 그 안의 user까지 한 방에 fetch join!
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"members", "members.user", "owner"})
     @org.springframework.data.jpa.repository.Query(
-            "SELECT f FROM Fridge f " +
-            "JOIN FridgeMember fm ON fm.fridge = f " +
+            "SELECT DISTINCT f FROM Fridge f " +
+            "JOIN f.members fm " +
             "WHERE fm.user = :user " +
             "ORDER BY f.id ASC"
     )

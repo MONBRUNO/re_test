@@ -230,7 +230,8 @@ public class FridgeService {
 
     // 멤버는 모두 동등 — isOwner는 더 이상 권한이 아니라 "내가 만든 냉장고인지"의 단순 정보로만 유지.
     private FridgeResponseDto toDto(Fridge fridge, User viewer) {
-        List<MemberDto> members = fridgeMemberRepository.findByFridge(fridge).stream()
+        // ✨ N+1 해결: fridgeMemberRepository 호출 대신, 이미 fetch join으로 가져온 fridge.getMembers() 사용!
+        List<MemberDto> members = fridge.getMembers().stream()
                 .map(fm -> {
                     User u = fm.getUser();
                     boolean isCreator = fridge.getOwner().getUsername().equals(u.getUsername());

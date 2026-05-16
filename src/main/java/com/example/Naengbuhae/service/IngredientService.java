@@ -39,9 +39,8 @@ public class IngredientService {
     private final ActivityLogService activityLogService;
 
     // === 헬퍼: 요청 시 활성 냉장고 결정 ===
-    // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고(=기본 냉장고).
-    // 어느 쪽이든 사용자가 멤버여야 한다.
-    // 사용자에게 냉장고가 하나도 없으면(신규 가입 / 마이그레이션 누락) 자동으로 "내 냉장고" 생성.
+    // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고.
+    // ✨ 부수 효과 제거: 조회(GET) 시 자동으로 냉장고를 생성하지 않습니다.
     private Fridge resolveFridge(User user, Long fridgeId) {
         if (fridgeId != null) {
             Fridge fridge = fridgeRepository.findById(fridgeId)
@@ -52,14 +51,7 @@ public class IngredientService {
             return fridge;
         }
         return fridgeRepository.findAllForMember(user).stream().findFirst()
-                .orElseGet(() -> ensureDefaultFridge(user));
-    }
-
-    // 기본 냉장고 자동 생성 (안전망). 이름은 "<사용자이름>의 냉장고".
-    private Fridge ensureDefaultFridge(User user) {
-        Fridge fridge = fridgeRepository.save(new Fridge(user, UserService.defaultFridgeName(user)));
-        fridgeMemberRepository.save(new FridgeMember(fridge, user));
-        return fridge;
+                .orElseThrow(() -> new IllegalArgumentException("참여 중인 냉장고가 없습니다. 냉장고를 먼저 생성해주세요."));
     }
 
     // === 헬퍼: 특정 식재료에 사용자가 접근 권한이 있는지(=그 냉장고 멤버인지) ===
