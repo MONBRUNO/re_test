@@ -184,12 +184,15 @@ public class IngredientService {
         for (Ingredient ing : targets) {
             Fridge f = ing.getFridge();
             String name = ing.getName();
-            ingredientRepository.delete(ing);
             if (f != null) {
                 activityLogService.recordIngredientRemoved(f, user, name);
                 byFridge.computeIfAbsent(f, k -> new java.util.ArrayList<>()).add(name);
             }
         }
+
+        // ✨ 최적화 완료: 루프 삭제가 아닌 벌크 삭제(1번의 쿼리)로 DB 부하 획기적 절감
+        ingredientRepository.deleteAllInBatch(targets);
+
         for (var e : byFridge.entrySet()) {
             Fridge f = e.getKey();
             java.util.List<String> names = e.getValue();

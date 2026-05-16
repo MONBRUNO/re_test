@@ -161,6 +161,10 @@ public class UserService {
             throw new IllegalArgumentException("이전과 동일한 비밀번호입니다.");
         }
         user.changePassword(passwordEncoder.encode(newPassword));
+
+        // ✨ 보안 패치 3: 비밀번호 변경 시 기존의 모든 로그인 세션(리프레시 토큰)을 강제로 만료시킵니다.
+        // 계정이 해킹당했을 경우 해커의 접속을 즉시 차단하기 위한 필수 조치입니다.
+        refreshTokenService.revokeAllForUser(user);
     }
 
     @Transactional(noRollbackFor = {IllegalArgumentException.class, IllegalStateException.class})

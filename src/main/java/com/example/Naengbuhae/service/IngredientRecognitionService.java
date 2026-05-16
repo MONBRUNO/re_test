@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -21,14 +23,22 @@ import java.util.Map;
 // 사진 자체는 저장하지 않음. API 호출 후 메모리에서 폐기.
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class IngredientRecognitionService {
 
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public IngredientRecognitionService(RestTemplateBuilder restTemplateBuilder) {
+        // ✨ 시니어 디테일: 외부 API 호출 시 타임아웃 설정은 필수 (연결 5초, 읽기 60초)
+        // 이미지 분석은 텍스트보다 오래 걸릴 수 있으므로 ReadTimeout을 넉넉히 설정합니다.
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(60))
+                .build();
+    }
 
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
