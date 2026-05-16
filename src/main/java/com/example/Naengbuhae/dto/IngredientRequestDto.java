@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -21,19 +22,15 @@ public class IngredientRequestDto {
     @Size(max = 50, message = "식재료 이름은 50자 이내여야 합니다.")
     private String name;
 
-    // 기존: @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다!")
-    // 기존: private Integer quantity;
     @NotNull(message = "수량은 필수 입력값입니다!")
-    @Positive(message = "수량은 0보다 커야 합니다!") // 0.5도 허용하기 위해 @Positive 사용
+    @Positive(message = "수량은 0보다 커야 합니다!")
     private Double quantity;
 
     @NotNull(message = "유통기한은 필수 입력값입니다!")
     @FutureOrPresent(message = "유통기한은 오늘 또는 미래의 날짜여야 합니다!")
-    @JsonFormat(pattern = "yyyy-MM-dd") // ✅ 추가: 날짜 형식 엇갈림 방어
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate expirationDate;
 
-    // Jackson @JsonCreator가 한글 라벨("채소" 등) → enum으로 자동 변환.
-    // 잘못된 값이 오면 IllegalArgumentException → GlobalExceptionHandler가 400으로 응답.
     @NotNull(message = "분류는 필수입니다!")
     private Category category;
 
@@ -46,14 +43,12 @@ public class IngredientRequestDto {
 
     @NotNull(message = "구매일은 필수 입력값입니다!")
     @PastOrPresent(message = "구매일은 오늘 또는 과거의 날짜여야 합니다!")
-    @JsonFormat(pattern = "yyyy-MM-dd") // ✅ 추가: 날짜 형식 엇갈림 방어
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate purchaseDate;
 
     // 어느 냉장고에 추가할지. 없으면 서비스 계층에서 사용자의 기본 냉장고로 자동 선택.
-    private Long fridgeId;
+    private UUID fridgeId;
 
-    // 편의 기능: "이 택배 상자(DTO)에 든 내용물을 실제 DB용 식재료(Entity)로 변환해 줘!"
-    // 식재료는 user(추가한 사람)와 fridge(소속 냉장고)를 모두 가짐. fridge는 서비스에서 주입.
     public Ingredient toEntity(User user) {
         return new Ingredient(user, name, quantity, expirationDate, category, unit, storage, purchaseDate);
     }

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +21,9 @@ import java.util.List;
 public class Fridge {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", columnDefinition = "UUID", updatable = false, nullable = false)
+    private UUID id;
 
     @Column(nullable = false, length = 50)
     private String name; // 예: "우리집 냉장고", "김치냉장고"

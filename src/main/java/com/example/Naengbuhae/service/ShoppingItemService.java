@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -117,7 +118,7 @@ public class ShoppingItemService {
     // 4-3. 장보기 자동 제안 — 가족이 자주 비운(INGREDIENT_REMOVED) 식재료 중
     //      "현재 냉장고에 없고" + "이미 장보기에 없는" 이름만 골라서 카운트 내림차순으로 반환.
     //      기간은 최근 60일.
-    public List<Map<String, Object>> getSuggestions(String username, Long fridgeId, int limit) {
+    public List<Map<String, Object>> getSuggestions(String username, UUID fridgeId, int limit) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
         Fridge fridge = resolveFridge(user, fridgeId);
@@ -146,7 +147,7 @@ public class ShoppingItemService {
     }
 
     // 사용자가 멤버인 냉장고 결정. fridgeId 명시되면 그 냉장고(권한 검증), 아니면 첫 냉장고.
-    private Fridge resolveFridge(User user, Long fridgeId) {
+    private Fridge resolveFridge(User user, UUID fridgeId) {
         if (fridgeId != null) {
             Fridge fridge = fridgeRepository.findById(fridgeId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 냉장고가 없습니다."));

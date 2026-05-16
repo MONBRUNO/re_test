@@ -5,8 +5,9 @@ import com.example.Naengbuhae.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.UUID;
 
-public interface FridgeRepository extends JpaRepository<Fridge, Long> {
+public interface FridgeRepository extends JpaRepository<Fridge, UUID> {
 
     List<Fridge> findByOwner(User owner);
 

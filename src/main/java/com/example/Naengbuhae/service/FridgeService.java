@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,7 +49,7 @@ public class FridgeService {
                 .toList();
     }
 
-    public FridgeResponseDto getFridge(Long fridgeId, String username) {
+    public FridgeResponseDto getFridge(UUID fridgeId, String username) {
         User user = findUser(username);
         Fridge fridge = findFridge(fridgeId);
         ensureMember(fridge, user);
@@ -70,7 +71,7 @@ public class FridgeService {
     }
 
     @Transactional
-    public FridgeResponseDto renameFridge(Long fridgeId, String name, String username) {
+    public FridgeResponseDto renameFridge(UUID fridgeId, String name, String username) {
         if (name == null || name.isBlank() || name.length() > 50) {
             throw new IllegalArgumentException("냉장고 이름이 올바르지 않습니다.");
         }
@@ -85,7 +86,7 @@ public class FridgeService {
     // 단 모두에게서 사라지는 destructive 작업이므로 클라이언트가 강한 확인을 띄워야 함.
     // 마지막 냉장고는 삭제 불가 (사용자가 식재료 추가할 곳이 없어짐).
     @Transactional
-    public void deleteFridge(Long fridgeId, String username) {
+    public void deleteFridge(UUID fridgeId, String username) {
         User user = findUser(username);
         Fridge fridge = findFridge(fridgeId);
         ensureMember(fridge, user);
@@ -109,7 +110,7 @@ public class FridgeService {
     // 활성 코드가 이미 있으면 그것을 재사용 (새 코드 만들지 않음) — 가족 한 명에게 코드 줬다가
     // "다시 발급" 누르면 옛 코드는 죽고 새 코드만 살아있는 식의 헷갈림 방지.
     @Transactional
-    public String createInvite(Long fridgeId, String username) {
+    public String createInvite(UUID fridgeId, String username) {
         User user = findUser(username);
         Fridge fridge = findFridge(fridgeId);
         ensureMember(fridge, user);
@@ -168,7 +169,7 @@ public class FridgeService {
 
     // 멤버 제거. 멤버 누구나 가능. 자기 자신은 leave 엔드포인트 사용.
     @Transactional
-    public void removeMember(Long fridgeId, String targetUsername, String requesterUsername) {
+    public void removeMember(UUID fridgeId, String targetUsername, String requesterUsername) {
         User requester = findUser(requesterUsername);
         Fridge fridge = findFridge(fridgeId);
         ensureMember(fridge, requester);
@@ -180,7 +181,7 @@ public class FridgeService {
         if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, target)) {
             throw new IllegalArgumentException("멤버가 아닙니다.");
         }
-        fridgeMemberRepository.deleteByFridgeAndUser(fridge, target);
+        fridgeMemberRepository.deleteByFridgeAndUserInBatch(fridge, target);
 
         // 제거된 본인에게 알림
         appNotificationService.notifyUser(target,
@@ -191,7 +192,7 @@ public class FridgeService {
 
     // 본인이 가입한 냉장고에서 나가기. 마지막 멤버였다면 냉장고 자체를 정리.
     @Transactional
-    public void leaveFridge(Long fridgeId, String username) {
+    public void leaveFridge(UUID fridgeId, String username) {
         User user = findUser(username);
         Fridge fridge = findFridge(fridgeId);
         if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
@@ -201,7 +202,7 @@ public class FridgeService {
         if (myFridgeCount <= 1) {
             throw new IllegalArgumentException("마지막 냉장고는 나갈 수 없습니다.");
         }
-        fridgeMemberRepository.deleteByFridgeAndUser(fridge, user);
+        fridgeMemberRepository.deleteByFridgeAndUserInBatch(fridge, user);
 
         // 모든 멤버가 나갔으면 냉장고 자체 정리 (식재료/초대코드/활동로그 포함)
         if (fridgeMemberRepository.findByFridge(fridge).isEmpty()) {
@@ -219,7 +220,7 @@ public class FridgeService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
     }
 
-    private Fridge findFridge(Long fridgeId) {
+    private Fridge findFridge(UUID fridgeId) {
         return fridgeRepository.findById(fridgeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 냉장고가 없습니다."));
     }

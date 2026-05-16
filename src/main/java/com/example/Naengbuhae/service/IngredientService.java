@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,7 +42,7 @@ public class IngredientService {
     // === 헬퍼: 요청 시 활성 냉장고 결정 ===
     // fridgeId가 명시되면 그 냉장고. 없으면 사용자가 멤버인 첫 번째 냉장고.
     // ✨ 부수 효과 제거: 조회(GET) 시 자동으로 냉장고를 생성하지 않습니다.
-    private Fridge resolveFridge(User user, Long fridgeId) {
+    private Fridge resolveFridge(User user, UUID fridgeId) {
         if (fridgeId != null) {
             Fridge fridge = fridgeRepository.findById(fridgeId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 냉장고가 없습니다. id=" + fridgeId));
@@ -99,7 +100,7 @@ public class IngredientService {
 
     // 2. 조회 — 특정 냉장고의 식재료. fridgeId 안 주면 기본 냉장고.
     //    가족 공유 시 같은 냉장고 멤버 모두 동일 결과 반환.
-    public List<IngredientResponseDto> findAllIngredients(String username, Long fridgeId) {
+    public List<IngredientResponseDto> findAllIngredients(String username, UUID fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
@@ -113,7 +114,7 @@ public class IngredientService {
 
     // 기존 시그니처 호환용 (다른 서비스가 이미 쓰고 있을 수 있음)
     public List<IngredientResponseDto> findAllIngredients(String username) {
-        return findAllIngredients(username, null);
+        return findAllIngredients(username, (UUID) null);
     }
 
     // 식재료 → DTO 변환 + 알레르기 매칭 결과 채움
@@ -254,7 +255,7 @@ public class IngredientService {
     }
 
     // 5. 유통기한 임박 식재료 — 특정 냉장고(또는 기본) 기준.
-    public List<ExpiringIngredientResponseDto> findExpiring(String username, int days, Long fridgeId) {
+    public List<ExpiringIngredientResponseDto> findExpiring(String username, int days, UUID fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
         Fridge fridge = resolveFridge(user, fridgeId);

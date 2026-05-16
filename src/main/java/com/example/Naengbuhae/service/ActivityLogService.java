@@ -17,9 +17,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 // 활동 로그 기록 + 통계 집계.
-// FridgeService.ensureMember()와 중복되지 않도록 식재료 hook 쪽에서만 직접 호출.
 @Service
 @RequiredArgsConstructor
 public class ActivityLogService {
@@ -46,7 +46,7 @@ public class ActivityLogService {
 
     // 통계 조회 — 기간(days) 내 멤버별 추가/삭제 카운트 + 자주 추가/삭제 TOP 5.
     @Transactional(readOnly = true)
-    public Stats getStats(Long fridgeId, int days, String requesterUsername) {
+    public Stats getStats(UUID fridgeId, int days, String requesterUsername) {
         User requester = userRepository.findByUsername(requesterUsername)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         Fridge fridge = fridgeRepository.findById(fridgeId)
@@ -58,7 +58,6 @@ public class ActivityLogService {
         int safeDays = Math.max(1, Math.min(days, 365));
         LocalDateTime since = LocalDateTime.now().minusDays(safeDays);
 
-        // 1) 멤버별 카운트 — 활동이 없는 멤버도 표시되어야 직관적이라 전체 멤버부터 0으로 초기화
         Map<String, MemberCount> byMember = new HashMap<>();
         for (FridgeMember fm : fridgeMemberRepository.findByFridge(fridge)) {
             User u = fm.getUser();
@@ -78,7 +77,6 @@ public class ActivityLogService {
             }
         }
 
-        // 2) TOP 5 식재료 (추가/삭제 각각)
         List<NameCount> topAdded = toTopList(
                 activityLogRepository.topIngredientsByAction(
                         fridge, ActivityLog.Action.INGREDIENT_ADDED, since));
@@ -109,14 +107,14 @@ public class ActivityLogService {
     // === DTO ===
 
     public static class Stats {
-        public final Long fridgeId;
+        public final UUID fridgeId;
         public final String fridgeName;
         public final int periodDays;
         public final List<MemberCount> members;
         public final List<NameCount> topAdded;
         public final List<NameCount> topRemoved;
 
-        public Stats(Long fridgeId, String fridgeName, int periodDays,
+        public Stats(UUID fridgeId, String fridgeName, int periodDays,
                      List<MemberCount> members,
                      List<NameCount> topAdded, List<NameCount> topRemoved) {
             this.fridgeId = fridgeId;
@@ -127,7 +125,7 @@ public class ActivityLogService {
             this.topRemoved = topRemoved;
         }
 
-        public Long getFridgeId() { return fridgeId; }
+        public UUID getFridgeId() { return fridgeId; }
         public String getFridgeName() { return fridgeName; }
         public int getPeriodDays() { return periodDays; }
         public List<MemberCount> getMembers() { return members; }
@@ -166,5 +164,4 @@ public class ActivityLogService {
         public String getName() { return name; }
         public long getCount() { return count; }
     }
-
 }

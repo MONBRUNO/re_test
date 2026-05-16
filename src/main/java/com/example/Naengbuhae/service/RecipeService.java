@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -145,7 +146,7 @@ public class RecipeService {
     /**
      * 💡 기존의 '내 식재료만' 보던 로직에서 -> '우리 가족 공유 냉장고' 로직으로 대규모 업그레이드!
      */
-    public List<RecipeMatchResponseDto> recommendRecipes(String username, Long fridgeId) {
+    public List<RecipeMatchResponseDto> recommendRecipes(String username, UUID fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 

@@ -22,7 +22,7 @@ public class FridgeInvite {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "fridge_id", nullable = false)
+    @JoinColumn(name = "fridge_id", columnDefinition = "UUID", nullable = false)
     private Fridge fridge;
 
     @Column(nullable = false, length = 6, unique = true)

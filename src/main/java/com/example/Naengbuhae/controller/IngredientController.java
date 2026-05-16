@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ingredients")
@@ -29,16 +30,16 @@ public class IngredientController {
 
     // GET: 식재료 조회. fridgeId 안 주면 사용자의 기본 냉장고.
     @GetMapping
-    public List<IngredientResponseDto> list(@RequestParam(required = false) Long fridgeId,
+    public List<IngredientResponseDto> list(@RequestParam(required = false) UUID fridgeId,
                                             Principal principal) {
         return ingredientService.findAllIngredients(principal.getName(), fridgeId);
     }
 
     // GET: 유통기한 임박 식재료 (만료된 것 + 향후 N일 이내 만료)
-    // 예: /api/ingredients/expiring?days=3&fridgeId=1
+    // 예: /api/ingredients/expiring?days=3&fridgeId=...
     @GetMapping("/expiring")
     public List<ExpiringIngredientResponseDto> expiring(@RequestParam(defaultValue = "3") int days,
-                                                        @RequestParam(required = false) Long fridgeId,
+                                                        @RequestParam(required = false) UUID fridgeId,
                                                         Principal principal) {
         return ingredientService.findExpiring(principal.getName(), days, fridgeId);
     }

@@ -45,13 +45,15 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse(false, "필수 파라미터가 누락되었습니다: " + ex.getParameterName()));
     }
 
-    // path variable / query param 타입 불일치 (예: /api/recipes/abc 인데 Long 기대).
+    // path variable / query param 타입 불일치 (예: UUID 자리에 '1'이 들어오는 경우 등)
+    // ✨ 보안 패치: 기술 스택 노출 방지 및 사용자 친화적 에러 메시지 반환
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String requiredType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "올바른 타입";
+        log.warn("[Security Warning] 잘못된 타입 요청 차단: 파라미터명={}, 입력값={}", ex.getName(), ex.getValue());
+        
+        String message = "잘못된 요청 형식입니다. (ID 형식이 올바르지 않습니다)";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse(false,
-                        String.format("'%s' 값이 잘못되었습니다. (%s 타입 필요)", ex.getName(), requiredType)));
+                .body(new ApiResponse(false, message));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

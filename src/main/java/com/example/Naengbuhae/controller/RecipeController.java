@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/recipes")
@@ -36,7 +37,7 @@ public class RecipeController {
     // GET: 내 냉장고 재료 기반 레시피 매칭 (모든 레시피를 매칭률과 함께 반환)
     @GetMapping("/recommendations")
     public List<RecipeMatchResponseDto> recommend(
-            @RequestParam(required = false) Long fridgeId,
+            @RequestParam(required = false) UUID fridgeId,
             Principal principal) {
         return recipeService.recommendRecipes(principal.getName(), fridgeId);
     }

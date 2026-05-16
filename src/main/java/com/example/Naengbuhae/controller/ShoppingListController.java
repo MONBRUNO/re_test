@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/shopping-list")
@@ -67,7 +69,7 @@ public class ShoppingListController {
     // 자동 제안 — 가족이 자주 비웠는데 지금 냉장고에도 없고 장보기에도 없는 식재료.
     @GetMapping("/suggestions")
     public java.util.List<java.util.Map<String, Object>> suggestions(
-            @RequestParam(required = false) Long fridgeId,
+            @RequestParam(required = false) UUID fridgeId,
             @RequestParam(defaultValue = "5") int limit,
             Principal principal) {
         return shoppingItemService.getSuggestions(principal.getName(), fridgeId, limit);

@@ -4,10 +4,11 @@ import com.example.Naengbuhae.domain.Fridge;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 public class FridgeResponseDto {
-    private final Long id;
+    private final UUID id;
     private final String name;
     private final String ownerUsername;
     private final List<MemberDto> members;

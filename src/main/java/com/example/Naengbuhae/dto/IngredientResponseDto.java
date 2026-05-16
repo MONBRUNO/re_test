@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 public class IngredientResponseDto {
@@ -21,7 +22,7 @@ public class IngredientResponseDto {
     private String unit;
     private Storage storage;     // 동일
     private LocalDate purchaseDate;
-    private Long fridgeId;
+    private UUID fridgeId;
     private String addedBy; // 등록한 사람 username (가족 공유 시 누가 추가했는지 표시용)
 
     // 사용자 알레르기와 매칭된 키워드. 비어있으면 안전. 서비스 계층에서 채워줌.
