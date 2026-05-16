@@ -17,9 +17,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     long countByUserAndReadFalse(User user);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("update Notification n set n.read = true where n.user = :user and n.read = false")
     int markAllAsRead(@Param("user") User user);
 
-    void deleteByUser(User user);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Notification n WHERE n.user = :user")
+    void deleteAllByUserInBatch(@Param("user") User user);
 }

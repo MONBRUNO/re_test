@@ -239,35 +239,39 @@ public class UserService {
         OAuthProvider provider = user.getProvider();
         String providerId = user.getProviderId();
 
-        // 1. 사용자가 소유한 냉장고: 자식 데이터(초대/활동로그/식재료/멤버) 먼저 모두 정리 후 냉장고 삭제.
-        //    같은 냉장고에 다른 가족 멤버가 있어도 함께 비워진다 (소유자 탈퇴 = 그 냉장고는 사라짐).
+        // 1. ✨ [N+1 박멸] 사용자가 소유한 냉장고 데이터 벌크 삭제
+        //    하나씩 SELECT-DELETE 하던 비효율을 걷어내고, 관련 테이블을 쿼리 한 방씩으로 정리합니다.
         for (Fridge fridge : fridgeRepository.findByOwner(user)) {
-            fridgeInviteRepository.deleteByFridge(fridge);
-            activityLogRepository.deleteByFridge(fridge);
-            ingredientRepository.deleteByFridge(fridge);
-            fridgeMemberRepository.deleteByFridge(fridge);
-            fridgeRepository.delete(fridge);
+            fridgeInviteRepository.deleteAllByFridgeInBatch(fridge);
+            activityLogRepository.deleteAllByFridgeInBatch(fridge);
+            ingredientRepository.deleteAllByFridgeInBatch(fridge);
+            fridgeMemberRepository.deleteAllByFridgeInBatch(fridge);
+            fridgeRepository.delete(fridge); // Fridge 본체 삭제
         }
 
-        // 2. 다른 사람 냉장고에 멤버로만 들어가 있던 흔적 정리.
-        for (FridgeMember m : fridgeMemberRepository.findByUser(user)) {
-            fridgeMemberRepository.delete(m);
-        }
+        // 2. ✨ [성능 최적화] 다른 사람 냉장고에 멤버로 가입된 정보 정리 (벌크 삭제)
+        fridgeMemberRepository.findByUser(user).forEach(m -> 
+            fridgeMemberRepository.deleteByFridgeAndUserInBatch(m.getFridge(), user)
+        );
 
-        // 3. 본인이 만든 데이터 일괄 정리. 1번에서 owned-fridge 한정 cleanup이 끝났으므로 여기는 잔여물(다른 냉장고에 추가한 식재료 등).
-        ingredientRepository.deleteByUser(user);
-        // 즐겨찾기 — 본인 것 + 본인이 만든 레시피를 다른 사람이 찜한 것 모두 정리해야 recipeRepository.deleteByUser 가 FK 위반 없이 동작.
-        recipeFavoriteRepository.deleteByUser(user);
-        recipeFavoriteRepository.deleteByRecipeOwner(user);
-        recipeRepository.deleteByUser(user);
-        shoppingItemRepository.deleteByUser(user);
+        // 3. ✨ [보안 및 성능] 사용자가 생성한 모든 부속 데이터 벌크 삭제 (쿼리 폭탄 제거)
+        ingredientRepository.deleteAllByUserInBatch(user);
+        
+        // 레시피 즐겨찾기: 본인이 한 것 + 내 레시피를 다른 사람이 한 것 한방에 정리
+        recipeFavoriteRepository.deleteAllByUserInBatch(user);
+        recipeFavoriteRepository.deleteAllByRecipeOwnerInBatch(user);
+        
+        // 레시피 본체 벌크 삭제
+        recipeRepository.deleteAllByUserInBatch(user);
+        
+        shoppingItemRepository.deleteAllByUserInBatch(user);
         refreshTokenService.revokeAllForUser(user);
-        fcmTokenRepository.deleteByUser(user);
-        notificationRepository.deleteByUser(user);
-        activityLogRepository.deleteByActor(user);
+        fcmTokenRepository.deleteByUser(user); // FcmToken은 단일 row라 유지
+        notificationRepository.deleteAllByUserInBatch(user);
+        activityLogRepository.deleteAllByActorInBatch(user);
         userTokenRepository.deleteByUser(user);
 
-        // 4. 모든 FK가 정리된 뒤 사용자 본체 삭제.
+        // 4. 모든 연관 데이터가 벌크로 정리된 후 최종 사용자 삭제
         userRepository.delete(user);
 
         if (provider == OAuthProvider.KAKAO && providerId != null) {

@@ -95,12 +95,14 @@ public class FridgeService {
             throw new IllegalArgumentException("마지막 냉장고는 삭제할 수 없습니다.");
         }
 
-        // 자식 데이터부터 정리. Hibernate 캐스케이드를 안 걸어둔 상태라 명시적 삭제.
-        ingredientRepository.deleteByFridge(fridge);
-        fridgeInviteRepository.deleteByFridge(fridge);
-        fridgeMemberRepository.deleteByFridge(fridge);
-        activityLogRepository.deleteByFridge(fridge);
-        fridgeRepository.delete(fridge);
+        // ✨ [성능 최적화] 자식 데이터부터 벌크 삭제 (쿼리 폭탄 제거)
+        // Hibernate 캐스케이드 대신 직접 벌크 삭제를 날려 DB 부하를 최소화합니다.
+        fridgeInviteRepository.deleteAllByFridgeInBatch(fridge);
+        activityLogRepository.deleteAllByFridgeInBatch(fridge);
+        ingredientRepository.deleteAllByFridgeInBatch(fridge);
+        fridgeMemberRepository.deleteAllByFridgeInBatch(fridge);
+        
+        fridgeRepository.delete(fridge); // 냉장고 본체 삭제
     }
 
     // 초대 코드 발급. 멤버 누구나 가능. 6자리 랜덤 코드, 24시간 유효.
@@ -203,9 +205,9 @@ public class FridgeService {
 
         // 모든 멤버가 나갔으면 냉장고 자체 정리 (식재료/초대코드/활동로그 포함)
         if (fridgeMemberRepository.findByFridge(fridge).isEmpty()) {
-            ingredientRepository.deleteByFridge(fridge);
-            fridgeInviteRepository.deleteByFridge(fridge);
-            activityLogRepository.deleteByFridge(fridge);
+            ingredientRepository.deleteAllByFridgeInBatch(fridge);
+            fridgeInviteRepository.deleteAllByFridgeInBatch(fridge);
+            activityLogRepository.deleteAllByFridgeInBatch(fridge);
             fridgeRepository.delete(fridge);
         }
     }

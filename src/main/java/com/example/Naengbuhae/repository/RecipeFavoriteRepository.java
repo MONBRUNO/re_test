@@ -14,22 +14,28 @@ public interface RecipeFavoriteRepository extends JpaRepository<RecipeFavorite, 
 
     boolean existsByUserAndRecipe(User user, Recipe recipe);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     void deleteByUserAndRecipe(User user, Recipe recipe);
 
     // 즐겨찾기로 표시된 recipe id 집합 — RecipeService가 RecipeResponseDto.favorite 채울 때 사용.
     @Query("select rf.recipe.id from RecipeFavorite rf where rf.user = :user")
     List<Long> findRecipeIdsByUser(@Param("user") User user);
 
-    @Modifying
-    void deleteByUser(User user);
+    @Modifying(clearAutomatically = true)
+    @Query("delete from RecipeFavorite rf where rf.user = :user")
+    void deleteAllByUserInBatch(@Param("user") User user);
 
-    @Modifying
-    void deleteByRecipe(Recipe recipe);
+    @Modifying(clearAutomatically = true)
+    @Query("delete from RecipeFavorite rf where rf.recipe = :recipe")
+    void deleteAllByRecipeInBatch(@Param("recipe") Recipe recipe);
+
+    default void deleteByRecipe(Recipe recipe) {
+        deleteAllByRecipeInBatch(recipe);
+    }
 
     // 탈퇴 시: 탈퇴 사용자의 레시피를 즐겨찾기한 다른 사용자들의 row도 함께 정리해
     // recipe FK 위반을 미리 방어한다.
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("delete from RecipeFavorite rf where rf.recipe.user = :owner")
-    void deleteByRecipeOwner(@Param("owner") User owner);
+    void deleteAllByRecipeOwnerInBatch(@Param("owner") User owner);
 }

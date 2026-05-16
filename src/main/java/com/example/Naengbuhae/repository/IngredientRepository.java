@@ -21,9 +21,13 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
     // 마이그레이션용: 아직 냉장고가 지정되지 않은 사용자별 식재료.
     List<Ingredient> findByUserAndFridgeIsNull(User user);
 
-    void deleteByUser(User user);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Ingredient i WHERE i.user = :user")
+    void deleteAllByUserInBatch(@org.springframework.data.repository.query.Param("user") User user);
 
-    void deleteByFridge(Fridge fridge);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Ingredient i WHERE i.fridge = :fridge")
+    void deleteAllByFridgeInBatch(@org.springframework.data.repository.query.Param("fridge") Fridge fridge);
 
     // ✨ 4단계 핵심: 이름에 특정 키워드가 '포함된' 식재료를 전부 찾아오는 마법의 메서드!
     List<Ingredient> findByNameContaining(String keyword);

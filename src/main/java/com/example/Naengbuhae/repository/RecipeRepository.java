@@ -16,9 +16,12 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @EntityGraph(attributePaths = {"user"})
     List<Recipe> findByUser(User user);
 
-    void deleteByUser(User user);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Recipe r WHERE r.user = :user")
+    void deleteAllByUserInBatch(@org.springframework.data.repository.query.Param("user") User user);
 
     // [최적화] 레시피와 작성자(User)를 한 방에 가져오기 (N+1 방지)
+
     // 컬렉션은 batch_size 설정에 따라 필요할 때 IN 쿼리로 묶어서 가져옴.
     @Query("SELECT r FROM Recipe r JOIN FETCH r.user")
     List<Recipe> findAllWithUser();

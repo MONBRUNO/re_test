@@ -19,7 +19,17 @@ public interface FridgeMemberRepository extends JpaRepository<FridgeMember, Long
 
     boolean existsByFridgeAndUser(Fridge fridge, User user);
 
-    void deleteByFridgeAndUser(Fridge fridge, User user);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM FridgeMember fm WHERE fm.fridge = :fridge")
+    void deleteAllByFridgeInBatch(@org.springframework.data.repository.query.Param("fridge") Fridge fridge);
 
-    void deleteByFridge(Fridge fridge);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM FridgeMember fm WHERE fm.fridge = :fridge AND fm.user = :user")
+    void deleteByFridgeAndUserInBatch(@org.springframework.data.repository.query.Param("fridge") Fridge fridge, 
+                                      @org.springframework.data.repository.query.Param("user") User user);
+    
+    // 호환성 유지용
+    default void deleteByFridgeAndUser(Fridge fridge, User user) {
+        deleteByFridgeAndUserInBatch(fridge, user);
+    }
 }

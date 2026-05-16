@@ -35,7 +35,11 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
                                           @Param("action") ActivityLog.Action action,
                                           @Param("since") LocalDateTime since);
 
-    void deleteByFridge(Fridge fridge);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ActivityLog a WHERE a.fridge = :fridge")
+    void deleteAllByFridgeInBatch(@Param("fridge") Fridge fridge);
 
-    void deleteByActor(com.example.Naengbuhae.user.User actor);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ActivityLog a WHERE a.actor = :actor")
+    void deleteAllByActorInBatch(@Param("actor") com.example.Naengbuhae.user.User actor);
 }

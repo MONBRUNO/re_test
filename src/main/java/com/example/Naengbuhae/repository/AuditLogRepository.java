@@ -15,7 +15,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     // 🛡️ Spring Boot 3.2+ 대응: @Param 어노테이션을 명시하여 배포 환경에서의 파라미터 바인딩 오류 방지
     @Transactional
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM AuditLog a WHERE a.timestamp < :cutoffDate")
     int deleteByTimestampBefore(@Param("cutoffDate") LocalDateTime cutoffDate);
 }

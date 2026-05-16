@@ -3,6 +3,7 @@ package com.example.Naengbuhae.repository;
 import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.FridgeInvite;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -15,5 +16,7 @@ public interface FridgeInviteRepository extends JpaRepository<FridgeInvite, Long
     Optional<FridgeInvite> findFirstByFridgeAndExpiresAtAfterOrderByExpiresAtDesc(
             Fridge fridge, LocalDateTime now);
 
-    void deleteByFridge(Fridge fridge);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM FridgeInvite i WHERE i.fridge = :fridge")
+    void deleteAllByFridgeInBatch(@Param("fridge") Fridge fridge);
 }
