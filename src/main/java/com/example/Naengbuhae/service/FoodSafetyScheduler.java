@@ -32,15 +32,28 @@ public class FoodSafetyScheduler {
         log.info("[Scheduler] 🚨 식약처 회수/판매중지 식품 API 호출 시작...");
 
         try {
-            // 식약처 API 주소 조립 (I0490: 회수판매중지 서비스 코드, 1~5번 데이터만 가져오기)
-            String url = "http://openapi.foodsafetykorea.go.kr/api/" + apiKey + "/I0490/json/1/5";
+            // 💡 실전: 최신 데이터 100개를 가져오도록 주소 변경 (1/100)
+            String url = "http://openapi.foodsafetykorea.go.kr/api/" + apiKey + "/I0490/json/1/100";
             
             // ✨ 핵심: String.class가 아니라 JsonNode.class로 바로 받아 인코딩 충돌 방지!
             JsonNode response = restTemplate.getForObject(url, JsonNode.class);
             
-            // 예쁘게 정렬해서 터미널에 출력 (toPrettyString)
             if (response != null) {
-                log.info("[식약처 응답 데이터 완벽 복구] : \n{}", response.toPrettyString());
+                // 💡 API 명세서 분석 적용: I0490 -> row 배열 안에 실제 데이터가 있음!
+                JsonNode rows = response.path("I0490").path("row");
+
+                log.info("총 {}개의 회수 대상 식품 데이터를 성공적으로 가져왔습니다!", rows.size());
+
+                // 💡 배열을 돌면서 위험 식품 이름과 사유 추출하기
+                for (JsonNode row : rows) {
+                    String productName = row.path("PRDTNM").asText(); // 1번: 제품명
+                    String companyName = row.path("BSSHNM").asText(); // 3번: 제조업체명
+                    String reason = row.path("RTRVLPRVNS").asText();  // 2번: 회수사유
+
+                    // 나중에는 여기서 우리 DB(Ingredient)를 뒤져서 productName이 포함된 식재료가 있는지 찾을 겁니다!
+                    // 지금은 일단 추출이 잘 되는지 확인!
+                    log.info("🚨 [위험식품 감지] 제품명: {}, 업체명: {}, 사유: {}", productName, companyName, reason);
+                }
             }
 
         } catch (Exception e) {
