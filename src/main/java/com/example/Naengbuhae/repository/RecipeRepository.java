@@ -26,4 +26,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     // distinct로 컬렉션 join 시 중복 제거
     @Query("SELECT DISTINCT r FROM Recipe r JOIN FETCH r.user LEFT JOIN FETCH r.ingredients")
     List<Recipe> findAllWithUserAndIngredients();
+
+    // ✨ N+1 방어막: 레시피를 가져올 때, '작성자(user)'와 '재료 목록(ingredients)'을 JOIN으로 한방에 끌어옵니다!
+    // 이렇게 하면 레시피가 100개든 1000개든 쿼리가 딱 1번만 나갑니다.
+    @EntityGraph(attributePaths = {"user", "ingredients"})
+    @Query("SELECT r FROM Recipe r")
+    List<Recipe> findAllOptimized();
 }
