@@ -1,5 +1,8 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.domain.enums.ActivityLevel;
+import com.example.Naengbuhae.domain.enums.DietGoal;
+import com.example.Naengbuhae.domain.enums.Gender;
 import lombok.Getter;
 import java.time.LocalDate;
 
@@ -8,13 +11,13 @@ public class UserResponseDto {
     private Long id;
     private String username;
     private String name;
-    private String gender;
+    private Gender gender;
     private Double height;
     private Double weight;
     private LocalDate birthDate;
     private String email;
-    private String activityLevel;
-    private String dietGoal;
+    private ActivityLevel activityLevel;
+    private DietGoal dietGoal;
     private String allergies;
     private UserRole role;
     private Integer recommendedCalories;

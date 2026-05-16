@@ -37,7 +37,8 @@ public class FoodSafetyScheduler {
         this.fcmService = fcmService;
     }
 
-    @Scheduled(cron = "0/10 * * * * *")
+    // (실무 적용 시 cron = "0 0 3 * * *" 로 변경하여 매일 새벽 3시에만 돌게 설정)
+    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     public void checkRecalledFoods() {
         if (apiKey == null || apiKey.isBlank()) {
             return;

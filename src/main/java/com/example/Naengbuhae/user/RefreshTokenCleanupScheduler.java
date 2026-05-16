@@ -25,7 +25,7 @@ public class RefreshTokenCleanupScheduler {
     @Value("${app.refresh-token.revoked-retention-hours:24}")
     private long revokedRetentionHours;
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     @Transactional
     public void purgeExpiredTokens() {
         LocalDateTime now = LocalDateTime.now();

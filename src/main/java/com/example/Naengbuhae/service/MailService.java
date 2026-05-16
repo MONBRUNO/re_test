@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -38,6 +39,7 @@ public class MailService {
     }
 
     // HTML 이메일 발송.
+    @Async // ✨ 이제 비동기로 동작하여 DB 커넥션을 점유하지 않습니다!
     public void sendHtml(String to, String subject, String html) {
         if (fromAddress == null || fromAddress.isBlank()) {
             throw new IllegalStateException("MAIL_USERNAME이 설정되지 않았습니다. .env 확인 필요.");

@@ -20,7 +20,7 @@ public class AuditLogCleanupScheduler {
     @Value("${app.audit.retention-days:180}") // 기본 180일 보관
     private int retentionDays;
 
-    @Scheduled(cron = "0 0 4 1 * *") // 매월 1일 새벽 4시에 실행
+    @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul") // 매일 새벽 4시에 실행
     @Transactional
     public void cleanupOldLogs() {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(retentionDays);

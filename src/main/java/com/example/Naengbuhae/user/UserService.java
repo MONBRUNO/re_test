@@ -2,6 +2,9 @@ package com.example.Naengbuhae.user;
 
 import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.FridgeMember;
+import com.example.Naengbuhae.domain.enums.ActivityLevel;
+import com.example.Naengbuhae.domain.enums.DietGoal;
+import com.example.Naengbuhae.domain.enums.Gender;
 import com.example.Naengbuhae.repository.ActivityLogRepository;
 import com.example.Naengbuhae.repository.FcmTokenRepository;
 import com.example.Naengbuhae.repository.FridgeInviteRepository;

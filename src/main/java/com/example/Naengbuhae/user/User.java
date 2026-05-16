@@ -1,5 +1,8 @@
 package com.example.Naengbuhae.user;
 
+import com.example.Naengbuhae.domain.enums.ActivityLevel;
+import com.example.Naengbuhae.domain.enums.DietGoal;
+import com.example.Naengbuhae.domain.enums.Gender;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,7 +26,8 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    private String gender;
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     private Double height;
 
@@ -41,9 +45,11 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean emailVerified = false;
 
-    private String activityLevel;
+    @Enumerated(EnumType.STRING)
+    private ActivityLevel activityLevel;
 
-    private String dietGoal;
+    @Enumerated(EnumType.STRING)
+    private DietGoal dietGoal;
 
     @Column(length = 1000)
     private String allergies;
@@ -76,9 +82,9 @@ public class User {
     }
 
     // 일반 회원가입용 생성자
-    public User(String username, String encodedPassword, UserRole role, String name, String gender,
+    public User(String username, String encodedPassword, UserRole role, String name, Gender gender,
                 Double height, Double weight, LocalDate birthDate, String email,
-                String activityLevel, String dietGoal, String allergies) {
+                ActivityLevel activityLevel, DietGoal dietGoal, String allergies) {
         this.username = username;
         this.password = encodedPassword;
         this.role = role;
@@ -111,8 +117,8 @@ public class User {
     }
 
     // 프로필 수정 (username/email/password/role은 변경 불가)
-    public void updateProfile(String name, String gender, Double height, Double weight,
-                              LocalDate birthDate, String activityLevel, String dietGoal,
+    public void updateProfile(String name, Gender gender, Double height, Double weight,
+                              LocalDate birthDate, ActivityLevel activityLevel, DietGoal dietGoal,
                               String allergies) {
         this.name = name;
         this.gender = gender;
@@ -132,9 +138,14 @@ public class User {
 
     // OAuth 신규 가입 시 제공자가 알려준 부가 정보(성별/생년월일)를 prefill.
     // 사용자가 직접 입력한 값이 있으면 덮어쓰지 않고, 비어있을 때만 채움.
-    public void prefillFromOAuth(String gender, LocalDate birthDate) {
-        if (gender != null && this.gender == null) {
-            this.gender = gender;
+    public void prefillFromOAuth(String genderStr, LocalDate birthDate) {
+        if (genderStr != null && this.gender == null) {
+            try {
+                this.gender = "male".equalsIgnoreCase(genderStr) || "M".equalsIgnoreCase(genderStr) || "남".equals(genderStr)
+                        ? Gender.MALE : Gender.FEMALE;
+            } catch (Exception e) {
+                // 파싱 실패 시 유지
+            }
         }
         if (birthDate != null && this.birthDate == null) {
             this.birthDate = birthDate;

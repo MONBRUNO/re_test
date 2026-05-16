@@ -5,6 +5,9 @@ import com.example.Naengbuhae.domain.Nutrition;
 import com.example.Naengbuhae.domain.Recipe;
 import com.example.Naengbuhae.domain.RecipeCategory;
 import com.example.Naengbuhae.domain.RecipeIngredient;
+import com.example.Naengbuhae.domain.enums.ActivityLevel;
+import com.example.Naengbuhae.domain.enums.DietGoal;
+import com.example.Naengbuhae.domain.enums.Gender;
 import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
@@ -62,13 +65,13 @@ public class RecipeSeeder {
                 randomPassword,
                 UserRole.ADMIN,
                 "냉부해 시스템",
-                "남",
+                Gender.MALE,
                 170.0,
                 60.0,
                 LocalDate.of(2000, 1, 1),
                 "system@naengbuhae.local",
-                "보통 활동",
-                "체중 유지",
+                ActivityLevel.MEDIUM,
+                DietGoal.MAINTAIN,
                 null
         );
         user.setRecommendedCalories(2000);
