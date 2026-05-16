@@ -25,4 +25,7 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
 
     // ✨ 4단계 핵심: 이름에 특정 키워드가 '포함된' 식재료를 전부 찾아오는 마법의 메서드!
     List<Ingredient> findByNameContaining(String keyword);
+
+    // ✨ 소비기한 임박 알림용: 특정 날짜에 만료되는 식재료 조회
+    List<Ingredient> findByExpirationDate(java.time.LocalDate date);
 }
