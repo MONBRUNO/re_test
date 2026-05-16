@@ -175,6 +175,11 @@ public class UserService {
     public void updateUserBanStatus(Long userId, boolean ban) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+
+        // ✨ 관리자 팀킬 방지 로직 추가
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new IllegalArgumentException("관리자 계정은 정지할 수 없습니다.");
+        }
         
         // 1. 유저 상태 변경
         user.changeBanStatus(ban);

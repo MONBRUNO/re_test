@@ -46,6 +46,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // 이메일이 없는 경우(카카오 일반 앱 등) OAuth2UserInfo가 placeholder를 채워주므로 별도 검증 없이 진행
         User user = findOrCreateUser(userInfo);
 
+        // ✨ 소셜 로그인 우회 원천 차단!
+        if (user.isBanned()) {
+            log.warn("[OAuth] 정지된 유저의 소셜 로그인 시도 차단: {}", userInfo.getEmail());
+            // OAuth2 프로세스 자체를 중단시키는 전용 예외 발생
+            throw new OAuth2AuthenticationException("banned_user"); 
+        }
+
         // 우리 시스템의 권한과 username을 attributes에 추가 (DefaultOAuth2User는 nameAttributeKey가 필요함)
         return new DefaultOAuth2User(
                 List.of(new SimpleGrantedAuthority(user.getRole().getAuthority())),
