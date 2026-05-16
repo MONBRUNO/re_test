@@ -56,7 +56,6 @@ public class FoodSafetyScheduler {
 
                     for (JsonNode row : rows) {
                         String productName = row.path("PRDTNM").asText();
-                        String companyName = row.path("BSSHNM").asText();
                         String reason = row.path("RTRVLPRVNS").asText();
 
                         if (productName.isBlank()) continue;

@@ -8,22 +8,22 @@ import java.time.LocalDate;
 
 @Getter
 public class UserResponseDto {
-    private Long id;
-    private String username;
-    private String name;
-    private Gender gender;
-    private Double height;
-    private Double weight;
-    private LocalDate birthDate;
-    private String email;
-    private ActivityLevel activityLevel;
-    private DietGoal dietGoal;
-    private String allergies;
-    private UserRole role;
-    private Integer recommendedCalories;
-    private boolean emailVerified;
+    private final Long id;
+    private final String username;
+    private final String name;
+    private final Gender gender;
+    private final Double height;
+    private final Double weight;
+    private final LocalDate birthDate;
+    private final String email;
+    private final ActivityLevel activityLevel;
+    private final DietGoal dietGoal;
+    private final String allergies;
+    private final UserRole role;
+    private final Integer recommendedCalories;
+    private final boolean emailVerified;
     // LOCAL/KAKAO/NAVER/GOOGLE — 클라이언트가 "비밀번호 변경" 등 LOCAL 전용 UI를 가릴 때 사용.
-    private OAuthProvider provider;
+    private final OAuthProvider provider;
 
     public UserResponseDto(User user) {
         this.id = user.getId();
