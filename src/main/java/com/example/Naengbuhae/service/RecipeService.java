@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.service;
 
+import com.example.Naengbuhae.domain.Fridge;
 import com.example.Naengbuhae.domain.Ingredient;
 import com.example.Naengbuhae.domain.Recipe;
 import com.example.Naengbuhae.domain.RecipeIngredient;
@@ -7,6 +8,8 @@ import com.example.Naengbuhae.dto.RecipeIngredientDto;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
+import com.example.Naengbuhae.repository.FridgeMemberRepository;
+import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.repository.RecipeFavoriteRepository;
 import com.example.Naengbuhae.repository.RecipeRepository;
@@ -14,6 +17,7 @@ import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
 import com.example.Naengbuhae.util.AllergyMatcher;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +29,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -34,6 +39,8 @@ public class RecipeService {
     private final UserRepository userRepository;
     private final IngredientRepository ingredientRepository;
     private final RecipeFavoriteRepository recipeFavoriteRepository;
+    private final FridgeRepository fridgeRepository;
+    private final FridgeMemberRepository fridgeMemberRepository; // ✨ 의존성 추가 완료
 
     // 1. 레시피 저장 (새 필드 + 재료 목록)
     @Transactional
@@ -135,18 +142,35 @@ public class RecipeService {
         return recipeRepository.count();
     }
 
-    // 7. 추천 (매칭률 기반) — 프론트의 matchRecipesWithIngredients와 동일한 로직
-    //   - 매칭률 = 보유 재료 수 / 전체 재료 수 * 100
-    //   - 단, 필수재료(required=true)가 하나라도 빠지면 매칭률 0
-    //   - 만료된 재료는 보유로 인정하지 않음
-    //   - 사용자 알레르기에 걸리는 레시피는 추천에서 제외 (안전 우선)
-    //   - 매칭률 내림차순 정렬
-    public List<RecipeMatchResponseDto> recommendRecipes(String username) {
+    /**
+     * 💡 기존의 '내 식재료만' 보던 로직에서 -> '우리 가족 공유 냉장고' 로직으로 대규모 업그레이드!
+     */
+    public List<RecipeMatchResponseDto> recommendRecipes(String username, Long fridgeId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다. username=" + username));
 
+        // 1. 대상 냉장고 결정 (fridgeId가 없으면 사용자의 첫 번째 냉장고 사용)
+        Fridge fridge;
+        if (fridgeId != null) {
+            fridge = fridgeRepository.findById(fridgeId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 냉장고를 찾을 수 없습니다."));
+            
+            // ✨ 핵심 보안 패치: 이 유저가 이 냉장고의 멤버가 맞는지 확인! (IDOR 방어)
+            if (!fridgeMemberRepository.existsByFridgeAndUser(fridge, user)) {
+                log.warn("🚨 [보안 경고] 유저 '{}'가 권한 없는 냉장고 '{}'에 접근 시도!", username, fridgeId);
+                throw new IllegalArgumentException("해당 냉장고에 접근할 권한이 없습니다.");
+            }
+        } else {
+            List<Fridge> myFridges = fridgeRepository.findAllForMember(user);
+            if (myFridges.isEmpty()) {
+                return List.of();
+            }
+            fridge = myFridges.get(0);
+        }
+
         LocalDate today = LocalDate.now();
-        Set<String> myIngredientNames = ingredientRepository.findByUser(user).stream()
+        // 2. ✨ 핵심! 본인뿐만 아니라 냉장고를 공유하는 모든 가족의 식재료를 가져옴
+        Set<String> familyIngredientNames = ingredientRepository.findByFridge(fridge).stream()
                 .filter(ing -> ing.getExpirationDate() == null || !ing.getExpirationDate().isBefore(today))
                 .map(Ingredient::getName)
                 .map(this::normalizeName)
@@ -156,10 +180,15 @@ public class RecipeService {
         Set<Long> favoriteIds = new HashSet<>(recipeFavoriteRepository.findRecipeIdsByUser(user));
 
         return recipeRepository.findAllWithUserAndIngredients().stream()
-                .map(recipe -> buildMatch(recipe, myIngredientNames, allergens, favoriteIds))
+                .map(recipe -> buildMatch(recipe, familyIngredientNames, allergens, favoriteIds))
                 .filter(match -> match.getRecipe().getAllergyWarnings().isEmpty()) // 알레르기 매칭 레시피 제외
                 .sorted(Comparator.comparingInt(RecipeMatchResponseDto::getMatchRate).reversed())
                 .collect(Collectors.toList());
+    }
+
+    // 기존 시그니처 유지 (호환성)
+    public List<RecipeMatchResponseDto> recommendRecipes(String username) {
+        return recommendRecipes(username, null);
     }
 
     // ===== 내부 헬퍼 =====

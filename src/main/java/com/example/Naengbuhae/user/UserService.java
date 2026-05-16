@@ -17,12 +17,14 @@ import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.repository.ShoppingItemRepository;
 import com.example.Naengbuhae.util.CalorieCalculator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -161,17 +163,48 @@ public class UserService {
         user.changePassword(passwordEncoder.encode(newPassword));
     }
 
+    @Transactional(noRollbackFor = {IllegalArgumentException.class, IllegalStateException.class})
     public User login(String username, String password) {
-        return userRepository.findByUsername(username)
-                .filter(user -> passwordEncoder.matches(password, user.getPassword()))
-                .filter(user -> {
-                    // ✨ 로그인 방어벽 추가
-                    if (user.isBanned()) {
-                        throw new IllegalArgumentException("정지된 계정입니다. 관리자에게 문의하세요.");
-                    }
-                    return true;
-                })
-                .orElse(null);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 사용자입니다."));
+
+        // ✨ 보안 패치 1: 이 계정이 현재 잠겨있는지 확인
+        if (user.getLockTime() != null) {
+            if (user.getLockTime().isAfter(java.time.LocalDateTime.now())) {
+                // 아직 잠금 시간이 안 지났음! 접근 거부!
+                throw new IllegalStateException("비밀번호 5회 오류로 계정이 15분간 잠겼습니다. 나중에 다시 시도해주세요.");
+            } else {
+                // 시간이 지났으면 잠금 해제!
+                user.resetFailedAttempt();
+            }
+        }
+
+        // ✨ 보안 패치 2: 비밀번호 검증
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            user.increaseFailedAttempt(); // 틀렸으니 실패 횟수 +1
+            
+            if (user.getFailedAttempt() >= 5) {
+                // 5번 틀렸으면 지금부터 15분간 계정 잠금! 쾅!
+                user.lockAccount(java.time.LocalDateTime.now().plusMinutes(15));
+                userRepository.save(user); // 즉시 저장
+                log.warn("🚨 [보안 경고] 계정 '{}'가 브루트 포스 공격 의심으로 15분간 잠금 처리되었습니다.", username);
+                throw new IllegalStateException("비밀번호 5회 오류로 계정이 15분간 잠겼습니다. 나중에 다시 시도해주세요.");
+            }
+            
+            userRepository.save(user); // 실패 횟수 저장
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다. (남은 기회: " + (5 - user.getFailedAttempt()) + "번)");
+        }
+
+        // ✨ 로그인 방어벽 추가 (기존 정지 계정 체크)
+        if (user.isBanned()) {
+            throw new IllegalArgumentException("정지된 계정입니다. 관리자에게 문의하세요.");
+        }
+
+        // ✨ 보안 패치 3: 비밀번호를 맞혔다면 실패 횟수 초기화!
+        user.resetFailedAttempt();
+        userRepository.save(user);
+        
+        return user;
     }
 
     @Transactional

@@ -73,7 +73,26 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isBanned = false;
 
+    @Column(name = "failed_attempt", nullable = false)
+    private int failedAttempt = 0; // 로그인 실패 횟수
+
+    @Column(name = "lock_time")
+    private java.time.LocalDateTime lockTime; // 언제까지 잠겨있는지 기록
+
     protected User() {
+    }
+
+    public void increaseFailedAttempt() {
+        this.failedAttempt++;
+    }
+
+    public void resetFailedAttempt() {
+        this.failedAttempt = 0;
+        this.lockTime = null;
+    }
+
+    public void lockAccount(java.time.LocalDateTime lockUntil) {
+        this.lockTime = lockUntil;
     }
 
     // ✨ 객체지향의 캡슐화를 지키기 위한 도메인 비즈니스 메서드
