@@ -56,7 +56,7 @@ public class RecipeController {
 
     // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천
     @GetMapping("/ai-recommendations")
-    public AiRecipeResponseDto getAiRecommendation(Principal principal) {
+    public List<AiRecipeResponseDto> getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
     }
 
