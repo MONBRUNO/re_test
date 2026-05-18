@@ -2665,3 +2665,18 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
   - `deleteByUser(user)` — 본인이 찍은 즐겨찾기
   - `deleteByRecipeOwner(user)` — 다른 사람이 본인 레시피에 찍은 즐겨찾기 (이걸 먼저 안 비우면 `recipeRepository.deleteByUser`가 FK 위반)
 
+
+## 🧭 브랜치 정리 — develop 통합 (2026-05-18)
+
+`chore/db-setting`에 쌓인 백엔드 작업(Fridge UUID 마이그레이션 등 팀원 작업 20커밋 포함)을 `develop`에 반영.
+
+- `chore/db-setting → develop` merge
+  - 코드 충돌 0, README만 충돌 → `chore/db-setting`(최신) 기준 채택
+  - 머지 후 `./gradlew compileJava` 통과 (에러 0)
+  - `origin/develop` 푸시 (`8d86462 → d61f6cd`)
+- 안 쓰는 브랜치 정리: `origin/master` 삭제 (레거시, 04-14 이후 방치 / 고유 4커밋 = Initial commit·BCrypt·로그인 수정)
+- `develop → main` 머지는 **안정화(QA) 후 진행 예정** — 보류
+  - 참고: `main`에 `chore/develop`에 없는 README-only 커밋 65개가 있어, 그때 README 충돌 정리 필요 (코드 충돌은 없을 것)
+- 현재 origin 브랜치: `main`(기본) · `chore/db-setting` · `develop`
+
+> Fridge 도메인은 IDOR 방어로 Long → UUID 전면 마이그레이션됨. 프론트(앱)도 fridge id를 문자열로 처리하도록 대응 완료.
