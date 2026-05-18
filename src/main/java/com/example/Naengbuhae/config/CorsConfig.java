@@ -1,3 +1,4 @@
+/*
 package com.example.Naengbuhae.config;
 
 import org.springframework.context.annotation.Bean;
@@ -21,3 +22,4 @@ public class CorsConfig {
         };
     }
 }
+*/// 코드 중복이 되니 삭제 할 거임

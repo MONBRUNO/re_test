@@ -1,56 +1,122 @@
 package com.example.Naengbuhae.config;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // 추가: 비밀번호 암호화 클래스
-import org.springframework.security.crypto.password.PasswordEncoder; // 추가: 암호화 인터페이스
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    @Value("${cors.allowed.origins}")
+    private String allowedOriginsString;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          CustomOAuth2UserService customOAuth2UserService,
+                          OAuth2SuccessHandler oAuth2SuccessHandler,
+                          OAuth2FailureHandler oAuth2FailureHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
-
-    // 암호화 빈(Bean)! 서버 에러 방지용!
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
+        this.oAuth2FailureHandler = oAuth2FailureHandler;
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception { // 주의: http.build() 때문에 throws Exception이 있어야 해!
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authorizeHttpRequests(auth -> auth // 이 코드 수정 이유는 스웨거(Swagger) 메뉴판이랑 호환이 안 되어서..
-                        // 로그인, 회원가입 + 스웨거 관련 주소는 신분증 없이 프리패스!
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/user/signup",
                                 "/user/login",
+                                "/user/token/refresh", // access 만료 후에도 호출 가능해야 함
+                                "/user/logout",        // 만료된 access로도 refresh 폐기 가능해야 함
+                                "/user/email/send-code",   // 가입 화면에서 인증번호 받기 — 미로그인
+                                "/user/email/verify-code", // 가입 화면에서 인증번호 확인 — 미로그인
+                                "/user/password/forgot", // 비번 찾기 — 미로그인
+                                "/user/password/reset",  // 토큰으로 비번 재설정 — 미로그인
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/api/ingredients", // 테스트를 위해 임시로 만든 통로2
-                                "/api/ingredients/**",// 테스트를 위해 임시로 만든 통로
-                                "/error" //에러를 출력하기 위한
+                                "/error",
+                                "/oauth2/**",         // OAuth 인증 시작 (예: /oauth2/authorization/kakao)
+                                "/login/oauth2/**",   // OAuth 콜백 (예: /login/oauth2/code/kakao)
+                                "/actuator/health"    // 로드밸런서/헬스체크 — 인증 없이 접근 허용
                         ).permitAll()
-                        .anyRequest().authenticated() // 나머지는 다 신분증(JWT) 검사해!
-                );
-                //.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated()
+                )
+                // OAuth2 로그인 활성화 — 우리 CustomOAuth2UserService로 사용자 정보 처리,
+                // 성공 시 OAuth2SuccessHandler가 JWT 발급 + 프론트로 redirect
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
+                )
+                // 인증 실패 시 OAuth 로그인 URL로 302 redirect 하는 default 동작을 끄고
+                // 401 JSON 응답으로 통일 — 프론트 wrapper가 401을 받아야 refresh를 시도할 수 있음
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
+                        })
+                )
+                // 인증 엔드포인트 brute-force 방지: JWT 필터보다 앞에 두어 DB 조회 전에 차단
+                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Stream API로 공백 제거 + 빈 값 필터링
+        List<String> parsedOrigins = Arrays.stream(allowedOriginsString.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+
+        // Wildcard 패턴(예: http://localhost:*) 지원을 위해 setAllowedOriginPatterns 사용.
+        // setAllowedOrigins는 정확 매칭만 가능하므로 와일드카드와 호환 안 됨.
+        configuration.setAllowedOriginPatterns(parsedOrigins);
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

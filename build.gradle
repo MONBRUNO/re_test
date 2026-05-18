@@ -1,16 +1,19 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.5'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+    sourceCompatibility = '17'
+}
+
+// Windows-KR 시스템에서 javac 기본 인코딩이 cp949라 한글 문자열이 깨지는 문제 방어.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
 
 configurations {
@@ -24,48 +27,38 @@ repositories {
 }
 
 dependencies {
-    // ==========================================
-    // 1. 코어 웹 & DB (프로젝트의 뼈대)
-    // ==========================================
-    implementation 'org.springframework.boot:spring-boot-starter-web' // 톰캣 내장 웹 서버 (수정 완료!)
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // DB를 자바 코드로 쉽게 다루게 해주는 마법 (JPA)
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
-    // ==========================================
-    // 2. 데이터베이스 (원희의 Supabase 창고)
-    // ==========================================
-    runtimeOnly 'org.postgresql:postgresql' // Supabase (PostgreSQL) 진짜 클라우드 DB 연결용!
-    runtimeOnly 'com.h2database:h2' // 로컬 메모리 DB (팀원이 테스트용으로 썼던 비상용 DB)
-    implementation 'org.springframework.boot:spring-boot-h2console' // H2 DB를 웹 브라우저에서 볼 수 있게 해줌
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-    // ==========================================
-    // 3. 보안 & 인증 (팀원의 로그인 방어막)
-    // ==========================================
-    implementation 'org.springframework.boot:spring-boot-starter-security' // 스프링 시큐리티 (철통 보안 문지기)
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // JWT 로그인 토큰 생성 및 검증 (최신 버전 0.12.5)
+    // Rate limiting (Token Bucket 알고리즘)
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+
+    // ✨ 추가: 메모리 누수 방지용 로컬 캐시 (Caffeine)
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    // Swagger (API 문서 제공 도구)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0'
+
+    // FCM 푸시 알림 (앱 멤버/초대 이벤트)
+    implementation 'com.google.firebase:firebase-admin:9.4.0'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
 
-    // ==========================================
-    // 4. 개발 편의 기능 & 설정
-    // ==========================================
-    compileOnly 'org.projectlombok:lombok' // Getter, Setter 등 반복 코드를 줄여주는 착한 마법사
+    compileOnly 'org.projectlombok:lombok'
+    runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0' // .env 파일에 숨겨둔 시크릿 키를 읽어오게 해줌
-
-    // ==========================================
-    // 5. API 문서 자동화
-    // ==========================================
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0' // 스웨거 (Swagger) API 메뉴판 자동 생성기
-
-    // ==========================================
-    // 6. 테스트 (서버 켜기 전 실험실)
-    // ==========================================
-    testImplementation 'org.springframework.boot:spring-boot-starter-test' // 스프링 부트 기본 통합 테스트 (수정 완료!)
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test' // DB(JPA) 전용 테스트 부품
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // 테스트 실행기
-
-    // 유효성 검사 (Validation) 방어막 추가!
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
 }
 
 tasks.named('test') {
