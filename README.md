@@ -2757,3 +2757,17 @@ AI 담당자가 웹 `Recipes.tsx`에 AI 추천 모달 UI(Step 1·2)를 만들어
 - 사용자 UX는 안 좋지만 발표/시연엔 충분, 일반 사용자도 안내 보고 알아서 결정
 
 **담당자 전달 사항(여전히 유효)**: Gemini Tier 1 billing 등록 → 무료 20/day 풀림 + 429 retry 끊기 + 공공데이터 `timeout=5` → 10초로 늘리기. 그러면 응답이 25~30초 수준으로 떨어져 UX 정상화됨.
+
+---
+
+## 🛒 장보기 수량 업데이트 엔드포인트 (2026-05-20)
+
+장바구니 카드의 `[-] 수량 [+]` 카운터에서 호출하는 수량 업데이트 endpoint. 기존엔 수량 변경하려면 항목을 삭제하고 다시 추가해야 했음.
+
+- `PATCH /api/shopping-list/{id}/quantity` 추가 — body: `{"quantity": 2.0}`
+- `ShoppingListController#updateQuantity(Long id, Map<String, Double> body, Principal)`
+- `ShoppingItemService#updateQuantity(Long, String, Double)`:
+  - 본인 소유 검증 (`item.user.username == principal`)
+  - `quantity == null || <= 0` 시 `IllegalArgumentException("수량은 0보다 커야 합니다.")` — 0 이하는 프론트에서 삭제 confirm으로 처리하므로 서버에선 거부
+  - `shoppingItem.setQuantity(newQty)` → `ShoppingItemResponseDto` 반환 (`@Transactional` 더티 체킹)
+- 응답은 갱신된 항목 dto — 프론트가 캐시 patch에 사용
