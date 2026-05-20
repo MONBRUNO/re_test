@@ -81,6 +81,21 @@ public class ShoppingItemService {
         return new ShoppingItemResponseDto(shoppingItem);
     }
 
+    // 3-2. 수량 업데이트 — 카운터 [-/+] UI에서 호출. 본인 항목만 수정.
+    @Transactional
+    public ShoppingItemResponseDto updateQuantity(Long id, String username, Double newQuantity) {
+        if (newQuantity == null || newQuantity <= 0) {
+            throw new IllegalArgumentException("수량은 0보다 커야 합니다.");
+        }
+        ShoppingItem shoppingItem = shoppingItemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 장보기 항목이 없습니다."));
+        if (!shoppingItem.getUser().getUsername().equals(username)) {
+            throw new IllegalArgumentException("본인의 장보기 항목만 수정할 수 있습니다.");
+        }
+        shoppingItem.setQuantity(newQuantity);
+        return new ShoppingItemResponseDto(shoppingItem);
+    }
+
     // 4. 장보기 항목 삭제
     @Transactional
     public void deleteShoppingItem(Long id, String username) {

@@ -37,6 +37,15 @@ public class ShoppingListController {
         return shoppingItemService.toggleCheck(id, principal.getName());
     }
 
+    // PATCH: 수량 업데이트 — [-/+] 카운터에서 호출. body: {"quantity": 2.0}
+    @PatchMapping("/{id}/quantity")
+    public ShoppingItemResponseDto updateQuantity(
+            @PathVariable Long id,
+            @RequestBody Map<String, Double> body,
+            Principal principal) {
+        return shoppingItemService.updateQuantity(id, principal.getName(), body.get("quantity"));
+    }
+
     // DELETE: 장보기 항목 삭제
     @DeleteMapping("/{id}")
     public String deleteItem(@PathVariable Long id, Principal principal) {
