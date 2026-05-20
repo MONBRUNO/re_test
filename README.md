@@ -2735,13 +2735,12 @@ AI 담당자의 별도 FastAPI 서버(`Wldgyu/capstone-ai`, 포트 8000)에 3개
 
 ---
 
-## ⏱️ AI 영양분석 timeout 단축 + UI 임시 숨김 (2026-05-20)
+## ⏱️ AI 영양분석 timeout 180초 + UI 노출 + "오래 걸려요" 안내 (2026-05-20)
 
-실제 띄워서 검증해보니 AI 서버(capstone-ai)가 **Gemini 무료 한도(20/day)** 초과 시 SDK 내부에서 자동으로 **8번 retry**하면서 1분 가까이 hang함. 백엔드 60초 readTimeout이 매번 발동 → 사용자 UX 망함.
+실제 띄워서 검증해보니 AI 서버(capstone-ai)가 평균 30~90초, 최악 2분까지 걸림 (공공데이터 3페이지 시도 + Gemini 2회 + SDK 자동 retry). 공공데이터 3페이지는 정확도상 줄이기 어렵다는 게 AI 담당자 입장 — 그래서 발표/시연용으로 "오래 걸리지만 끝까지 응답 받는" 형태로 유지하기로.
 
-근본 해결은 AI 담당자 영역 (billing 등록 / retry 끊기). 우리 쪽 임시 처치:
+- **`NutritionAnalysisService` readTimeout 180초** — 끝까지 응답 받을 시간 확보
+- **웹·앱 UI 노출** — `AI_NUTRITION_ENABLED` / `_aiNutritionEnabled` 플래그 `true`. 발표용 별도 페이지 안 만들고 영양 분석 화면 하단에 "AI 분석 1~3분 소요" 안내(amber) + 로딩 메시지에 "(최대 3분)" 표시
+- 사용자 UX는 안 좋지만 발표/시연엔 충분, 일반 사용자도 안내 보고 알아서 결정
 
-- **`NutritionAnalysisService` readTimeout 60초 → 30초** — 어차피 30초 안에 정상 응답 못 받으면 fail. 1분 hang 방지하고 사용자에게 빠르게 에러 표시
-- **웹·앱 UI 임시 숨김** — `AI_NUTRITION_ENABLED` / `_aiNutritionEnabled` feature flag로 영양 검색 + 추천 섹션 진입 자체 가림. 코드는 보존, 플래그만 `true`로 바꾸면 즉시 복귀
-
-**담당자 전달 사항**: Gemini Tier 1 billing 등록 → 무료 20/day 풀림 + 429 retry 끊기 + 공공데이터 `timeout=5` → 10초로 늘리기. 이후 flag만 다시 `true`.
+**담당자 전달 사항(여전히 유효)**: Gemini Tier 1 billing 등록 → 무료 20/day 풀림 + 429 retry 끊기 + 공공데이터 `timeout=5` → 10초로 늘리기. 그러면 응답이 25~30초 수준으로 떨어져 UX 정상화됨.

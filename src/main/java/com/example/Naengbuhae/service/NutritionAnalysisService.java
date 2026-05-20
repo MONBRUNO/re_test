@@ -41,11 +41,11 @@ public class NutritionAnalysisService {
     private final RestTemplate restTemplate;
 
     public NutritionAnalysisService(RestTemplateBuilder restTemplateBuilder) {
-        // AI 서버가 Gemini quota(20/day) 초과 시 8번 retry 도느라 1분 가까이 hang함 — 사용자 UX 위해 30초로 단축.
-        // 30초 안에 끝나면 정상 응답, 못 끝나면 빠르게 에러 표시. (담당자가 retry 끊으면 60초로 복귀)
+        // AI 서버 응답이 평균 30~60초, 최악 2분까지 걸림 (공공데이터 3페이지 + Gemini 2회 + SDK retry).
+        // 발표/시연 시에도 끝까지 응답을 받기 위해 readTimeout 180초로 넉넉히. UI에선 "시간 걸려요" 안내로 커버.
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
-                .setReadTimeout(Duration.ofSeconds(30))
+                .setReadTimeout(Duration.ofSeconds(180))
                 .build();
     }
 
