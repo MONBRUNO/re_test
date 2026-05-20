@@ -2694,3 +2694,30 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
   - 수량/단위 fallback(`null → 1.0` / `blank → "개"`) → `Ingredient` 변환 (`category=ETC`, `storage=REFRIGERATED`, 유통기한 `+7일`)
   - `ActivityLog` 기록 + `ShoppingItem` 삭제
 - 체크 여부 무관 — 단일 라인 이관 의도라 `isChecked` 검사 안 함
+
+---
+
+## 🤖 AI 서버(capstone-ai) 영양분석 프록시 추가 (2026-05-20)
+
+AI 담당자의 별도 FastAPI 서버(`Wldgyu/capstone-ai`, 포트 8000)에 3개 엔드포인트가 있는데 그 중 `/api/recommend`(냉장고 식재료 → 요리 추천)는 이미 `AiRecipeService`로 통합돼 있었음. 이번에 `/analyze`(사진/텍스트 → 영양정보) 프록시를 추가.
+
+**properties 구조 정리**
+- 기존 `ai.server.url=http://localhost:8000/api/recommend` (단일 path 박힘) → `ai.server.base-url=http://localhost:8000` (base만, endpoint는 서비스 코드에서 조합)
+- `AiRecipeService`도 같이 수정 (`base + "/api/recommend"`)
+- 환경변수도 `AI_SERVER_URL` → `AI_SERVER_BASE_URL`
+
+**`/analyze` 프록시**
+- 신규 `POST /api/nutrition/analyze` (multipart) — `file`(이미지) 또는 `text` 폼 파라미터 중 하나
+- `NutritionAnalysisController` + `NutritionAnalysisService` + `NutritionItemDto`
+- AI 서버 응답 `{status, data: [{food_name, is_corrected, cat, cal, carbohydrate, protein, fat}, ...]}` → 백엔드는 `{data: [...]}` wrapping만 유지하고 그대로 전달 (snake_case 필드는 `@JsonProperty`로 매핑, 직렬화 시에도 동일 키 유지)
+- 통신 실패 시 503, 그 외 처리 예외 500
+
+**기존 `IngredientRecognitionService`는 유지**
+- 사진 → 식재료 등록 폼 자동완성(`name/category/storage/quantity/unit/expiryDaysByStorage`)은 AI 서버 `/analyze`(영양정보 추출) 출력과 **목적이 다름**. 단순 대체 불가라 그대로 둠. 이중 과금 우려는 추후 AI 서버 스키마 확장 시 정리.
+
+**RateLimit**
+- `/api/nutrition/analyze` 5회/분/IP 추가 (기존 `/api/ingredients/recognize`, `/api/recipes/ai-recommendations`와 동일 정책)
+
+**다음 작업 후보 (현재는 미구현)**
+- AI 서버 `/fdmake`(단일 식재료 + 영양정보 → 요리 3개) 프록시
+- `IngredientRecognitionService` → AI 서버로 통합 (스키마 확장 요청 필요)

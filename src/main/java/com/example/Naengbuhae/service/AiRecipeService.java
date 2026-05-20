@@ -29,8 +29,9 @@ public class AiRecipeService {
     private final IngredientRepository ingredientRepository;
     private final RestTemplate restTemplate;
 
-    @Value("${ai.server.url}")
-    private String aiServerUrl;
+    // AI 서버 base URL — endpoint는 /api/recommend (냉장고 식재료 기반 추천)
+    @Value("${ai.server.base-url}")
+    private String aiServerBaseUrl;
 
     public AiRecipeService(UserRepository userRepository,
                            FridgeRepository fridgeRepository,
@@ -84,10 +85,11 @@ public class AiRecipeService {
                     .ingredients(ingredientNames)
                     .build();
 
-            log.info("[AI Service] 📦 AI 서버({})로 요청 전송 중...", aiServerUrl);
+            String url = aiServerBaseUrl + "/api/recommend";
+            log.info("[AI Service] 📦 AI 서버({})로 요청 전송 중...", url);
 
             // 외부 AI 서버로 POST 요청 전송 (ListResponseDto로 받음)
-            AiRecipeListResponseDto aiResponse = restTemplate.postForObject(aiServerUrl, requestDto, AiRecipeListResponseDto.class);
+            AiRecipeListResponseDto aiResponse = restTemplate.postForObject(url, requestDto, AiRecipeListResponseDto.class);
 
             if (aiResponse != null && "success".equals(aiResponse.getStatus())) {
                 log.info("[AI Service] ✅ AI 서버로부터 {}개의 레시피를 추천받았습니다.", aiResponse.getRecommendations().size());
@@ -95,7 +97,7 @@ public class AiRecipeService {
             }
 
         } catch (RestClientException e) {
-            log.error("[AI Service] ❌ AI 서버({}) 통신 중 장애 발생: {}", aiServerUrl, e.getMessage());
+            log.error("[AI Service] ❌ AI 서버({}) 통신 중 장애 발생: {}", aiServerBaseUrl, e.getMessage());
             throw new RuntimeException("AI 서버와의 통신이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
         } catch (Exception e) {
             log.error("[AI Service] ❌ 오류 발생: {}", e.getMessage());
