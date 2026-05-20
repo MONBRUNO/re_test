@@ -9,6 +9,8 @@ import com.example.Naengbuhae.repository.FridgeRepository;
 import com.example.Naengbuhae.repository.IngredientRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -101,6 +103,53 @@ public class AiRecipeService {
             throw new RuntimeException("AI 서버와의 통신이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
         } catch (Exception e) {
             log.error("[AI Service] ❌ 오류 발생: {}", e.getMessage());
+            throw e;
+        }
+
+        return Collections.emptyList();
+    }
+
+    /**
+     * 단일 식재료 + 영양정보 기반 추천 — AI 서버 /fdmake 프록시.
+     * /analyze 결과 카드의 "이 재료로 요리 추천" 흐름에서 호출됨.
+     */
+    public List<AiRecipeResponseDto> getAiRecommendationForFood(
+            String username, String foodName, String cat, Map<String, Object> nutritionData) {
+        log.info("[AI Service] 🍽️ 사용자 '{}'의 단일 식재료('{}') 기반 추천 요청", username, foodName);
+
+        try {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+            String userPreference = user.getDietGoal() != null
+                    ? user.getDietGoal().getDescription()
+                    : "건강 관리";
+
+            // AI 서버 /fdmake 요청 본문 — snake_case 그대로 전달.
+            Map<String, Object> body = new HashMap<>();
+            body.put("user_id", username);
+            body.put("food_name", foodName);
+            body.put("cat", cat != null ? cat : "");
+            body.put("user_preference", userPreference);
+            body.put("nutrition_data", nutritionData != null ? nutritionData : new HashMap<>());
+
+            String url = aiServerBaseUrl + "/fdmake";
+            log.info("[AI Service] 📦 AI 서버({}) /fdmake 호출", url);
+
+            AiRecipeListResponseDto aiResponse =
+                    restTemplate.postForObject(url, body, AiRecipeListResponseDto.class);
+
+            if (aiResponse != null && "success".equals(aiResponse.getStatus())) {
+                log.info("[AI Service] ✅ /fdmake로부터 {}개 추천 받음",
+                        aiResponse.getRecommendations().size());
+                return aiResponse.getRecommendations();
+            }
+
+        } catch (RestClientException e) {
+            log.error("[AI Service] ❌ AI 서버({}) /fdmake 통신 실패: {}", aiServerBaseUrl, e.getMessage());
+            throw new RuntimeException("AI 서버와의 통신이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
+        } catch (Exception e) {
+            log.error("[AI Service] ❌ /fdmake 오류: {}", e.getMessage());
             throw e;
         }
 

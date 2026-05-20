@@ -1,5 +1,6 @@
 package com.example.Naengbuhae.controller;
 
+import com.example.Naengbuhae.dto.AiFoodRecommendRequestDto;
 import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
@@ -55,10 +56,23 @@ public class RecipeController {
         return id + "번 레시피가 삭제되었습니다! 🗑️";
     }
 
-    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천
+    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천 — 냉장고 전체 식재료 기반
     @GetMapping("/ai-recommendations")
     public List<AiRecipeResponseDto> getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
+    }
+
+    // POST: 단일 식재료 + 영양정보 기반 추천 — capstone-ai /fdmake 프록시
+    // /api/nutrition/analyze 결과 카드의 "이 재료로 요리 추천" 흐름에서 호출
+    @PostMapping("/ai-for-food")
+    public List<AiRecipeResponseDto> getAiRecommendationForFood(
+            @RequestBody AiFoodRecommendRequestDto request,
+            Principal principal) {
+        return aiRecipeService.getAiRecommendationForFood(
+                principal.getName(),
+                request.getFoodName(),
+                request.getCat(),
+                request.getNutritionData());
     }
 
     // POST: 즐겨찾기 토글 — 응답으로 새 상태(true=즐겨찾기) 반환.

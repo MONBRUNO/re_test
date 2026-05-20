@@ -2719,5 +2719,16 @@ AI 담당자의 별도 FastAPI 서버(`Wldgyu/capstone-ai`, 포트 8000)에 3개
 - `/api/nutrition/analyze` 5회/분/IP 추가 (기존 `/api/ingredients/recognize`, `/api/recipes/ai-recommendations`와 동일 정책)
 
 **다음 작업 후보 (현재는 미구현)**
-- AI 서버 `/fdmake`(단일 식재료 + 영양정보 → 요리 3개) 프록시
 - `IngredientRecognitionService` → AI 서버로 통합 (스키마 확장 요청 필요)
+
+---
+
+## 🍽️ AI 서버 `/fdmake` 프록시 — 단일 식재료 기반 추천 (2026-05-20)
+
+`/analyze` 결과 카드의 "이 재료로 요리 추천" 흐름에서 호출되는 단일 식재료 기반 추천 — AI 서버 `/fdmake` 프록시.
+
+- `POST /api/recipes/ai-for-food` 추가 — `RecipeController#getAiRecommendationForFood`
+- `AiRecipeService#getAiRecommendationForFood(username, foodName, cat, nutritionData)` — `/api/recommend`와 동일 패턴(`user_preference`는 `user.dietGoal.description`)
+- 요청 DTO `AiFoodRecommendRequestDto` 신규 — `food_name`/`cat`/`nutrition_data` 받음 (snake_case `@JsonProperty`). `user_id`/`user_preference`는 백엔드가 채워서 AI 서버에 전달
+- 응답 DTO는 기존 `AiRecipeResponseDto`/`AiRecipeListResponseDto` 재사용 (`/fdmake`와 `/api/recommend` 응답 스키마 동일)
+- RateLimit 5회/분/IP 추가 (AI 비용 보호)
