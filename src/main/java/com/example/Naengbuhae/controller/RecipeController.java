@@ -1,6 +1,7 @@
 package com.example.Naengbuhae.controller;
 
 import com.example.Naengbuhae.dto.AiFoodRecommendRequestDto;
+import com.example.Naengbuhae.dto.AiFridgeRecommendRequestDto;
 import com.example.Naengbuhae.dto.AiRecipeResponseDto;
 import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
@@ -56,10 +57,22 @@ public class RecipeController {
         return id + "번 레시피가 삭제되었습니다! 🗑️";
     }
 
-    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천 — 냉장고 전체 식재료 기반
+    // GET: 외부 AI (Gemini/FastAPI) 기반 맞춤형 레시피 추천 — 냉장고 전체 식재료 자동
     @GetMapping("/ai-recommendations")
     public List<AiRecipeResponseDto> getAiRecommendation(Principal principal) {
         return aiRecipeService.getAiRecommendation(principal.getName());
+    }
+
+    // POST: 사용자가 모달에서 직접 선택한 식재료/스타일 기반 AI 추천 (custom)
+    // 웹 Recipes.tsx의 AIRecommendModal Step 1·2 → Step 3에서 호출.
+    @PostMapping("/ai-recommendations")
+    public List<AiRecipeResponseDto> getAiRecommendationCustom(
+            @RequestBody AiFridgeRecommendRequestDto request,
+            Principal principal) {
+        return aiRecipeService.getAiRecommendationCustom(
+                principal.getName(),
+                request.getIngredients(),
+                request.getStyles());
     }
 
     // POST: 단일 식재료 + 영양정보 기반 추천 — capstone-ai /fdmake 프록시

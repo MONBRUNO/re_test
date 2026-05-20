@@ -2735,6 +2735,19 @@ AI 담당자의 별도 FastAPI 서버(`Wldgyu/capstone-ai`, 포트 8000)에 3개
 
 ---
 
+## 🥗 AI 냉장고 추천 (custom) 엔드포인트 추가 (2026-05-20)
+
+AI 담당자가 웹 `Recipes.tsx`에 AI 추천 모달 UI(Step 1·2)를 만들어 뒀는데 mock fetch 상태로 백엔드 연결이 끊긴 상태였음. 기존 `GET /api/recipes/ai-recommendations`는 냉장고 전체 자동 + dietGoal 자동이라 모달의 사용자 직접 선택 흐름과 맞지 않아 새 POST endpoint 추가.
+
+- `POST /api/recipes/ai-recommendations` 신규 — `RecipeController#getAiRecommendationCustom`
+  - 기존 GET endpoint와 같은 path, method만 다름 (RESTful)
+- `AiFridgeRecommendRequestDto` 신규 — `{ ingredients: List<String>, styles: List<String> }`
+- `AiRecipeService#getAiRecommendationCustom(username, ingredients, styles)` — styles 다중 선택은 콤마 join해서 AI 서버 `user_preference`로 전달. ingredients 비어있으면 400
+- `AiRecipeService` readTimeout 30초 → 180초 (NutritionAnalysisService와 동일 정책 — Gemini retry hang 대응)
+- RateLimit은 path 기준이라 기존 5/min 그대로 적용됨
+
+---
+
 ## ⏱️ AI 영양분석 timeout 180초 + UI 노출 + "오래 걸려요" 안내 (2026-05-20)
 
 실제 띄워서 검증해보니 AI 서버(capstone-ai)가 평균 30~90초, 최악 2분까지 걸림 (공공데이터 3페이지 시도 + Gemini 2회 + SDK 자동 retry). 공공데이터 3페이지는 정확도상 줄이기 어렵다는 게 AI 담당자 입장 — 그래서 발표/시연용으로 "오래 걸리지만 끝까지 응답 받는" 형태로 유지하기로.

@@ -42,10 +42,11 @@ public class AiRecipeService {
         this.userRepository = userRepository;
         this.fridgeRepository = fridgeRepository;
         this.ingredientRepository = ingredientRepository;
-        // ✨ 시니어 디테일: 외부 API 호출 시 타임아웃 설정은 필수 (연결 5초, 읽기 30초)
+        // AI 서버가 Gemini 무료 한도/일시 부하 시 SDK 자동 retry로 1분+ hang하는 패턴 있어 readTimeout 180초로 넉넉히.
+        // NutritionAnalysisService와 동일 정책.
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
-                .setReadTimeout(Duration.ofSeconds(30))
+                .setReadTimeout(Duration.ofSeconds(180))
                 .build();
     }
 
@@ -103,6 +104,57 @@ public class AiRecipeService {
             throw new RuntimeException("AI 서버와의 통신이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
         } catch (Exception e) {
             log.error("[AI Service] ❌ 오류 발생: {}", e.getMessage());
+            throw e;
+        }
+
+        return Collections.emptyList();
+    }
+
+    /**
+     * 웹/앱 AI 추천 모달에서 사용자가 선택한 식재료 + 요리 스타일 기반 추천.
+     * 기존 getAiRecommendation은 냉장고 전체 자동 + dietGoal 사용 — 이쪽은 사용자 직접 선택.
+     */
+    public List<AiRecipeResponseDto> getAiRecommendationCustom(
+            String username, List<String> ingredients, List<String> styles) {
+        log.info("[AI Service] 🥗 사용자 '{}' — 직접 선택({}개) + 스타일({})",
+                username, ingredients != null ? ingredients.size() : 0, styles);
+
+        if (ingredients == null || ingredients.isEmpty()) {
+            throw new IllegalArgumentException("식재료를 1개 이상 선택해주세요.");
+        }
+
+        try {
+            // 사용자 검증만 (정보는 따로 안 씀 — 모달이 선택값 다 전달)
+            userRepository.findByUsername(username)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+            // 스타일 다중 선택 → 콤마 join. 비어있으면 "건강 관리" fallback.
+            String userPreference = (styles != null && !styles.isEmpty())
+                    ? String.join(", ", styles)
+                    : "건강 관리";
+
+            AiRecipeRequestDto requestDto = AiRecipeRequestDto.builder()
+                    .user_id(username)
+                    .user_preference(userPreference)
+                    .ingredients(ingredients)
+                    .build();
+
+            String url = aiServerBaseUrl + "/api/recommend";
+            log.info("[AI Service] 📦 AI 서버({}) /api/recommend (custom) 호출", url);
+
+            AiRecipeListResponseDto aiResponse =
+                    restTemplate.postForObject(url, requestDto, AiRecipeListResponseDto.class);
+
+            if (aiResponse != null && "success".equals(aiResponse.getStatus())) {
+                log.info("[AI Service] ✅ {}개 추천 받음", aiResponse.getRecommendations().size());
+                return aiResponse.getRecommendations();
+            }
+
+        } catch (RestClientException e) {
+            log.error("[AI Service] ❌ /api/recommend(custom) 통신 실패: {}", e.getMessage());
+            throw new RuntimeException("AI 서버와의 통신이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
+        } catch (Exception e) {
+            log.error("[AI Service] ❌ /api/recommend(custom) 오류: {}", e.getMessage());
             throw e;
         }
 
