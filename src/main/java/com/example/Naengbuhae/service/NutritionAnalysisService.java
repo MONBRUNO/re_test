@@ -41,10 +41,11 @@ public class NutritionAnalysisService {
     private final RestTemplate restTemplate;
 
     public NutritionAnalysisService(RestTemplateBuilder restTemplateBuilder) {
-        // 영양분석은 이미지 OCR + LLM + 공공데이터 API라 비교적 오래 걸림 → 읽기 타임아웃 60초.
+        // AI 서버가 Gemini quota(20/day) 초과 시 8번 retry 도느라 1분 가까이 hang함 — 사용자 UX 위해 30초로 단축.
+        // 30초 안에 끝나면 정상 응답, 못 끝나면 빠르게 에러 표시. (담당자가 retry 끊으면 60초로 복귀)
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
-                .setReadTimeout(Duration.ofSeconds(60))
+                .setReadTimeout(Duration.ofSeconds(30))
                 .build();
     }
 

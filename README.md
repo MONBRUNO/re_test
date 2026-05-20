@@ -2732,3 +2732,16 @@ AI 담당자의 별도 FastAPI 서버(`Wldgyu/capstone-ai`, 포트 8000)에 3개
 - 요청 DTO `AiFoodRecommendRequestDto` 신규 — `food_name`/`cat`/`nutrition_data` 받음 (snake_case `@JsonProperty`). `user_id`/`user_preference`는 백엔드가 채워서 AI 서버에 전달
 - 응답 DTO는 기존 `AiRecipeResponseDto`/`AiRecipeListResponseDto` 재사용 (`/fdmake`와 `/api/recommend` 응답 스키마 동일)
 - RateLimit 5회/분/IP 추가 (AI 비용 보호)
+
+---
+
+## ⏱️ AI 영양분석 timeout 단축 + UI 임시 숨김 (2026-05-20)
+
+실제 띄워서 검증해보니 AI 서버(capstone-ai)가 **Gemini 무료 한도(20/day)** 초과 시 SDK 내부에서 자동으로 **8번 retry**하면서 1분 가까이 hang함. 백엔드 60초 readTimeout이 매번 발동 → 사용자 UX 망함.
+
+근본 해결은 AI 담당자 영역 (billing 등록 / retry 끊기). 우리 쪽 임시 처치:
+
+- **`NutritionAnalysisService` readTimeout 60초 → 30초** — 어차피 30초 안에 정상 응답 못 받으면 fail. 1분 hang 방지하고 사용자에게 빠르게 에러 표시
+- **웹·앱 UI 임시 숨김** — `AI_NUTRITION_ENABLED` / `_aiNutritionEnabled` feature flag로 영양 검색 + 추천 섹션 진입 자체 가림. 코드는 보존, 플래그만 `true`로 바꾸면 즉시 복귀
+
+**담당자 전달 사항**: Gemini Tier 1 billing 등록 → 무료 20/day 풀림 + 429 retry 끊기 + 공공데이터 `timeout=5` → 10초로 늘리기. 이후 flag만 다시 `true`.
