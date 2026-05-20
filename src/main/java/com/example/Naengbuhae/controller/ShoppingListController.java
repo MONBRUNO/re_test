@@ -50,6 +50,13 @@ public class ShoppingListController {
         return shoppingItemService.moveCheckedItemsToFridge(principal.getName());
     }
 
+    // POST: 단일 장보기 항목을 냉장고로 이관 (체크 여부 무관).
+    // 프론트(ingredientStore.transferShoppingItemToIngredient)에서 한 줄씩 이관할 때 사용.
+    @PostMapping("/{id}/transfer")
+    public String transferToFridge(@PathVariable Long id, Principal principal) {
+        return shoppingItemService.transferToFridge(id, principal.getName());
+    }
+
     // 다중 선택 일괄 삭제. body: {"ids": [1, 2, 3]}
     @PostMapping("/bulk-delete")
     public String bulkDelete(@RequestBody java.util.Map<String, java.util.List<Long>> body,

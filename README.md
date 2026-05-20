@@ -2680,3 +2680,17 @@ appNotificationService.notifyUsers(others, title, body, "fridge");
 - 현재 origin 브랜치: `main`(기본) · `chore/db-setting` · `develop`
 
 > Fridge 도메인은 IDOR 방어로 Long → UUID 전면 마이그레이션됨. 프론트(앱)도 fridge id를 문자열로 처리하도록 대응 완료.
+
+---
+
+## 🛒 장보기 — 단일 항목 이관 엔드포인트 (2026-05-20)
+
+프론트(`ingredientStore.transferShoppingItemToIngredient`)가 한 줄씩 이관할 때 호출하는 `POST /api/shopping-list/{id}/transfer`가 백엔드에 누락돼 있었음. 기존엔 체크된 항목 전체 일괄 이관(`/move-to-fridge`)만 존재.
+
+- `ShoppingListController#transferToFridge(Long id, Principal)` 추가 — `POST /api/shopping-list/{id}/transfer`
+- `ShoppingItemService#transferToFridge(Long, String)` 추가 — `moveCheckedItemsToFridge`와 동일 패턴:
+  - 본인 소유 검증 (`item.user.username == principal`)
+  - `findAllForMember(user).findFirst()`로 기본 냉장고 결정 (없으면 400)
+  - 수량/단위 fallback(`null → 1.0` / `blank → "개"`) → `Ingredient` 변환 (`category=ETC`, `storage=REFRIGERATED`, 유통기한 `+7일`)
+  - `ActivityLog` 기록 + `ShoppingItem` 삭제
+- 체크 여부 무관 — 단일 라인 이관 의도라 `isChecked` 검사 안 함

@@ -175,6 +175,43 @@ public class ShoppingItemService {
         shoppingItemRepository.deleteAll(targets);
         return targets.size();
     }
+    // 5-2. 단일 장보기 항목을 냉장고로 이관 (체크 여부 무관). 본인 소유 검증 후
+    //      moveCheckedItemsToFridge와 동일 패턴으로 Ingredient 생성 + 활동로그 + ShoppingItem 삭제.
+    @Transactional
+    public String transferToFridge(Long id, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
+        ShoppingItem item = shoppingItemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 장보기 항목이 없습니다."));
+        if (!item.getUser().getUsername().equals(username)) {
+            throw new IllegalArgumentException("본인의 장보기 항목만 이관할 수 있습니다.");
+        }
+
+        Fridge defaultFridge = fridgeRepository.findAllForMember(user).stream().findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("참여 중인 냉장고가 없습니다. 냉장고를 먼저 생성해주세요."));
+
+        Double finalQuantity = item.getQuantity() != null ? item.getQuantity() : 1.0;
+        String unit = (item.getUnit() != null && !item.getUnit().isBlank()) ? item.getUnit() : "개";
+
+        Ingredient ingredient = new Ingredient(
+                user,
+                item.getName(),
+                finalQuantity,
+                LocalDate.now().plusDays(7),
+                Category.ETC,
+                unit,
+                Storage.REFRIGERATED,
+                LocalDate.now()
+        );
+        ingredient.setFridge(defaultFridge);
+        ingredientRepository.save(ingredient);
+
+        activityLogService.recordIngredientAdded(defaultFridge, user, item.getName(), finalQuantity, unit);
+        shoppingItemRepository.delete(item);
+
+        return item.getName() + " 항목이 '" + defaultFridge.getName() + "' 냉장고로 이동되었습니다.";
+    }
+
     // ✨ 5. 마법의 API: 구매 완료된 항목을 냉장고로 옮기기!
     @Transactional
     public String moveCheckedItemsToFridge(String username) {
