@@ -21,12 +21,19 @@ public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
-        
+
         String errorMessage = "auth_failed";
-        
+
         // 우리가 CustomOAuth2UserService에서 던진 "banned_user" 예외인지 확인
         if (exception.getMessage() != null && exception.getMessage().contains("banned_user")) {
             errorMessage = "banned";
+        }
+
+        // 진짜 실패 원인 로깅 — provider 이메일 누락 / DB 중복 / FK 위반 등 추적용
+        log.error("[OAuth Filter] 소셜 로그인 예외 원인", exception);
+        Throwable cause = exception.getCause();
+        if (cause != null) {
+            log.error("[OAuth Filter] caused by", cause);
         }
 
         // 프론트엔드 콜백 주소 뒤에 ?error=banned 를 붙여서 리다이렉트
