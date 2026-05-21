@@ -58,8 +58,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        // 운영에서도 실제 SQL 에러를 로그로 남겨야 어떤 FK/UNIQUE가 깨졌는지 추적 가능.
+        // 응답 메시지엔 root cause의 짧은 요약을 함께 넣어 디버깅 편의성 확보.
+        Throwable root = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
+        log.error("[DataIntegrityViolation] {}", root.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse(false, "데이터 중복 또는 제약조건 위반이 발생했습니다."));
+                .body(new ApiResponse(false, "데이터 중복 또는 제약조건 위반: " + root.getMessage()));
     }
 
     // 서비스 계층에서 검증 실패로 던지는 예외 (사용자 없음, 잘못된 토큰 등).
