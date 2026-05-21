@@ -2771,3 +2771,13 @@ AI 담당자가 웹 `Recipes.tsx`에 AI 추천 모달 UI(Step 1·2)를 만들어
   - `quantity == null || <= 0` 시 `IllegalArgumentException("수량은 0보다 커야 합니다.")` — 0 이하는 프론트에서 삭제 confirm으로 처리하므로 서버에선 거부
   - `shoppingItem.setQuantity(newQty)` → `ShoppingItemResponseDto` 반환 (`@Transactional` 더티 체킹)
 - 응답은 갱신된 항목 dto — 프론트가 캐시 patch에 사용
+
+---
+
+## 🧷 장보기 목록 정렬 — ID ASC 강제 (2026-05-21)
+
+PostgreSQL은 `ORDER BY`가 없으면 row 반환 순서를 보장하지 않음. 수량 PATCH 후 페이지/앱 새로고침하면 방금 갱신된 항목이 뒤로 밀려 보이던 원인 (프론트는 캐시 patch만 해서 세션 내 정렬은 안전했지만 reload 시점에 backend 정렬이 흩어짐).
+
+- `ShoppingItemRepository.findByUserOrderByIdAsc(User)` 추가 — 메서드명만으로 Spring Data JPA가 `ORDER BY id ASC` 생성
+- `ShoppingItemService.getMyShoppingList`만 새 메서드 사용
+- 다른 callsite(`addShoppingItems` 중복 검사, `getSuggestions` 필터)는 `Set`으로 변환해서 쓰기 때문에 정렬 무관 → 기존 `findByUser` 그대로 유지
