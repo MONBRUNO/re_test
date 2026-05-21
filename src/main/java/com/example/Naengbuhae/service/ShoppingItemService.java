@@ -59,7 +59,8 @@ public class ShoppingItemService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 없습니다."));
 
-        return shoppingItemRepository.findByUser(user).stream()
+        // 수량/체크 변경 후에도 추가한 순서 그대로 보이도록 id ASC 정렬
+        return shoppingItemRepository.findByUserOrderByIdAsc(user).stream()
                 .map(ShoppingItemResponseDto::new)
                 .toList();
     }
