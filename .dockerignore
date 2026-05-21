@@ -1,0 +1,23 @@
+# 로컬 빌드 산출물 / IDE 파일 / 비밀 파일은 도커 이미지에 포함시키지 않음
+build/
+.gradle/
+.idea/
+*.iml
+.vscode/
+
+# 비밀: 절대 이미지에 들어가면 안 됨. Render env 변수로 주입.
+.env
+.env.local
+.env.*.local
+firebase-service-account.json
+api_key.txt
+
+# Git / 문서
+.git/
+.gitignore
+README.md
+deps.txt
+
+# 로그 / 임시
+*.log
+tmp/
