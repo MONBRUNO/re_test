@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -90,6 +91,8 @@ public class SecurityConfig {
                             response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
                         })
                 )
+                // 앱 OAuth 흐름 표시 쿠키 — OAuth2 redirect 필터보다 먼저 실행돼야 쿠키가 응답에 실림
+                .addFilterBefore(new OAuthClientTypeFilter(), OAuth2AuthorizationRequestRedirectFilter.class)
                 // 인증 엔드포인트 brute-force 방지: JWT 필터보다 앞에 두어 DB 조회 전에 차단
                 .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

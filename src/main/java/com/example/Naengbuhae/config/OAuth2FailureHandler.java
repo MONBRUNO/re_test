@@ -36,13 +36,18 @@ public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
             log.error("[OAuth Filter] caused by", cause);
         }
 
-        // 프론트엔드 콜백 주소 뒤에 ?error=banned 를 붙여서 리다이렉트
-        String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
+        // 앱(외부 브라우저)에서 온 흐름이면 커스텀 스킴으로, 웹이면 프론트 URL로 리다이렉트
+        boolean isApp = OAuthClientTypeFilter.isAppClient(request);
+        String baseRedirect = isApp ? OAuthClientTypeFilter.APP_REDIRECT : frontendRedirectUrl;
+
+        String targetUrl = UriComponentsBuilder.fromUriString(baseRedirect)
                 .queryParam("error", errorMessage)
                 .build()
                 .toUriString();
 
-        log.info("[OAuth Filter] 소셜 로그인 실패 처리 -> 프론트엔드 이관: {}", targetUrl);
+        if (isApp) OAuthClientTypeFilter.clearCookie(response);
+
+        log.info("[OAuth Filter] 소셜 로그인 실패 처리 -> 이관: {} (앱: {})", targetUrl, isApp);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

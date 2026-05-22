@@ -52,7 +52,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 신체정보 등 필수값이 비어있으면 추가 정보 입력 필요
         boolean needsAdditionalInfo = !user.hasCompleteProfile();
 
-        String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
+        // 앱(외부 브라우저)에서 온 흐름이면 커스텀 스킴으로, 웹이면 프론트 URL로 리다이렉트
+        boolean isApp = OAuthClientTypeFilter.isAppClient(request);
+        String baseRedirect = isApp ? OAuthClientTypeFilter.APP_REDIRECT : frontendRedirectUrl;
+
+        String redirectUrl = UriComponentsBuilder.fromUriString(baseRedirect)
                 .queryParam("token", accessToken)
                 .queryParam("refreshToken", refreshToken)
                 .queryParam("needsAdditionalInfo", needsAdditionalInfo)
@@ -60,8 +64,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build()
                 .toUriString();
 
-        log.info("[OAuth] 로그인 성공: {} ({}), 추가정보 필요: {}",
-                user.getEmail(), user.getProvider(), needsAdditionalInfo);
+        if (isApp) OAuthClientTypeFilter.clearCookie(response);
+
+        log.info("[OAuth] 로그인 성공: {} ({}), 추가정보 필요: {}, 앱: {}",
+                user.getEmail(), user.getProvider(), needsAdditionalInfo, isApp);
 
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
