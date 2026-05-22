@@ -656,5 +656,602 @@
       { "name": "바나나", "quantity": 1, "unit": "개", "required": true },
       { "name": "우유", "quantity": 200, "unit": "ml", "required": true }
     ]
+  },
+  {
+    "name": "마라탕",
+    "category": "ETC", "difficulty": "medium", "cookingTime": 25, "servings": 2,
+    "steps": [
+      "냄비에 마라소스와 물을 넣고 끓입니다.",
+      "청경채, 버섯, 분모자(당면) 등 좋아하는 재료를 넣습니다.",
+      "고기와 어묵을 넣어 익힙니다.",
+      "기호에 맞게 땅콩소스나 고수를 곁들여 완성합니다."
+    ],
+    "nutrition": { "calories": 420, "protein": 22, "carbs": 38, "fat": 20, "sodium": 1500 },
+    "ingredients": [
+      { "name": "마라소스", "quantity": 1, "unit": "팩", "required": true },
+      { "name": "당면", "quantity": 100, "unit": "g", "required": false },
+      { "name": "청경채", "quantity": 2, "unit": "포기", "required": false },
+      { "name": "버섯", "quantity": 100, "unit": "g", "required": false },
+      { "name": "소고기", "quantity": 100, "unit": "g", "required": false }
+    ]
+  },
+  {
+    "name": "로제 떡볶이",
+    "category": "SNACK", "difficulty": "easy", "cookingTime": 20, "servings": 2,
+    "steps": [
+      "냄비에 우유와 물을 붓고 고추장, 고춧가루를 풉니다.",
+      "떡과 어묵을 넣고 끓입니다.",
+      "끓으면 생크림이나 우유를 더 넣어 로제 색을 냅니다.",
+      "치즈를 올려 녹인 뒤 완성합니다."
+    ],
+    "nutrition": { "calories": 480, "protein": 12, "carbs": 78, "fat": 14, "sodium": 980 },
+    "ingredients": [
+      { "name": "떡", "quantity": 300, "unit": "g", "required": true },
+      { "name": "우유", "quantity": 200, "unit": "ml", "required": true },
+      { "name": "고추장", "quantity": 1, "unit": "큰술", "required": false },
+      { "name": "어묵", "quantity": 100, "unit": "g", "required": false },
+      { "name": "치즈", "quantity": 1, "unit": "장", "required": false }
+    ]
+  },
+  {
+    "name": "로제 파스타",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 25, "servings": 2,
+    "steps": [
+      "파스타 면을 소금 넣은 물에 삶습니다.",
+      "팬에 베이컨과 양파를 볶습니다.",
+      "토마토소스와 생크림(또는 우유)을 1:1로 넣고 끓입니다.",
+      "삶은 면을 넣어 버무리고 치즈를 뿌려 완성합니다."
+    ],
+    "nutrition": { "calories": 600, "protein": 18, "carbs": 78, "fat": 24, "sodium": 880 },
+    "ingredients": [
+      { "name": "스파게티면", "quantity": 200, "unit": "g", "required": true },
+      { "name": "토마토소스", "quantity": 0.5, "unit": "컵", "required": true },
+      { "name": "우유", "quantity": 150, "unit": "ml", "required": true },
+      { "name": "베이컨", "quantity": 4, "unit": "줄", "required": false },
+      { "name": "양파", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "명란 파스타",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 20, "servings": 1,
+    "steps": [
+      "파스타 면을 삶고 면수를 약간 남깁니다.",
+      "팬에 버터를 녹이고 명란을 으깨 넣습니다.",
+      "삶은 면과 면수를 넣어 약불에서 버무립니다.",
+      "김가루와 쪽파를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 520, "protein": 18, "carbs": 70, "fat": 18, "sodium": 1100 },
+    "ingredients": [
+      { "name": "스파게티면", "quantity": 100, "unit": "g", "required": true },
+      { "name": "명란", "quantity": 2, "unit": "개", "required": true },
+      { "name": "버터", "quantity": 1, "unit": "큰술", "required": false }
+    ]
+  },
+  {
+    "name": "알리오 올리오",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 20, "servings": 1,
+    "steps": [
+      "파스타 면을 소금 넣은 물에 삶습니다.",
+      "팬에 올리브유를 넉넉히 두르고 편 마늘을 약불에 볶습니다.",
+      "페페론치노를 넣고 면수를 약간 더합니다.",
+      "삶은 면을 넣어 버무리고 파슬리를 뿌려 완성합니다."
+    ],
+    "nutrition": { "calories": 480, "protein": 12, "carbs": 72, "fat": 16, "sodium": 520 },
+    "ingredients": [
+      { "name": "스파게티면", "quantity": 100, "unit": "g", "required": true },
+      { "name": "마늘", "quantity": 6, "unit": "쪽", "required": true },
+      { "name": "올리브유", "quantity": 3, "unit": "큰술", "required": false }
+    ]
+  },
+  {
+    "name": "감바스 알 아히요",
+    "category": "SIDE", "difficulty": "easy", "cookingTime": 15, "servings": 2,
+    "steps": [
+      "팬에 올리브유를 붓고 편 마늘을 약불로 익힙니다.",
+      "페페론치노를 넣어 향을 냅니다.",
+      "손질한 새우를 넣고 익힙니다.",
+      "소금으로 간하고 바게트를 곁들여 완성합니다."
+    ],
+    "nutrition": { "calories": 320, "protein": 24, "carbs": 4, "fat": 24, "sodium": 620 },
+    "ingredients": [
+      { "name": "새우", "quantity": 200, "unit": "g", "required": true },
+      { "name": "마늘", "quantity": 8, "unit": "쪽", "required": true },
+      { "name": "올리브유", "quantity": 0.5, "unit": "컵", "required": false }
+    ]
+  },
+  {
+    "name": "에그인헬",
+    "category": "ETC", "difficulty": "easy", "cookingTime": 20, "servings": 2,
+    "steps": [
+      "팬에 양파와 마늘을 볶습니다.",
+      "토마토소스를 넣고 보글보글 끓입니다.",
+      "가운데를 우묵하게 만들어 계란을 깨 넣습니다.",
+      "뚜껑을 덮어 계란을 반숙으로 익혀 완성합니다."
+    ],
+    "nutrition": { "calories": 240, "protein": 14, "carbs": 16, "fat": 13, "sodium": 680 },
+    "ingredients": [
+      { "name": "계란", "quantity": 3, "unit": "개", "required": true },
+      { "name": "토마토소스", "quantity": 1, "unit": "컵", "required": true },
+      { "name": "양파", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "아보카도 토스트",
+    "category": "SNACK", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "식빵을 바삭하게 굽습니다.",
+      "잘 익은 아보카도를 으깨 소금, 후추로 간합니다.",
+      "구운 식빵에 아보카도를 펴 바릅니다.",
+      "수란이나 계란 프라이를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 340, "protein": 11, "carbs": 30, "fat": 20, "sodium": 420 },
+    "ingredients": [
+      { "name": "식빵", "quantity": 1, "unit": "장", "required": true },
+      { "name": "아보카도", "quantity": 0.5, "unit": "개", "required": true },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "연어 포케",
+    "category": "SALAD", "difficulty": "easy", "cookingTime": 15, "servings": 1,
+    "steps": [
+      "생연어를 깍둑썰기 해 간장 양념에 가볍게 무칩니다.",
+      "그릇에 밥을 깔고 채소를 올립니다.",
+      "연어와 아보카도를 올립니다.",
+      "소스를 뿌리고 깨를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 480, "protein": 26, "carbs": 52, "fat": 18, "sodium": 700 },
+    "ingredients": [
+      { "name": "연어", "quantity": 120, "unit": "g", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "아보카도", "quantity": 0.5, "unit": "개", "required": false },
+      { "name": "양상추", "quantity": 2, "unit": "장", "required": false }
+    ]
+  },
+  {
+    "name": "그릭요거트볼",
+    "category": "SNACK", "difficulty": "easy", "cookingTime": 5, "servings": 1,
+    "steps": [
+      "그릭요거트를 그릇에 담습니다.",
+      "그래놀라를 위에 뿌립니다.",
+      "과일을 먹기 좋게 잘라 올립니다.",
+      "꿀을 살짝 둘러 완성합니다."
+    ],
+    "nutrition": { "calories": 320, "protein": 18, "carbs": 42, "fat": 9, "sodium": 90 },
+    "ingredients": [
+      { "name": "그릭요거트", "quantity": 150, "unit": "g", "required": true },
+      { "name": "그래놀라", "quantity": 40, "unit": "g", "required": false },
+      { "name": "바나나", "quantity": 0.5, "unit": "개", "required": false },
+      { "name": "딸기", "quantity": 4, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "오트밀",
+    "category": "SNACK", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "냄비나 그릇에 오트밀과 우유를 넣습니다.",
+      "전자레인지나 약불로 2~3분 데웁니다.",
+      "바나나와 견과류를 올립니다.",
+      "꿀을 살짝 둘러 완성합니다."
+    ],
+    "nutrition": { "calories": 300, "protein": 12, "carbs": 48, "fat": 8, "sodium": 80 },
+    "ingredients": [
+      { "name": "오트밀", "quantity": 50, "unit": "g", "required": true },
+      { "name": "우유", "quantity": 200, "unit": "ml", "required": true },
+      { "name": "바나나", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "크로플",
+    "category": "SNACK", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "와플 기계를 예열합니다.",
+      "냉동 생크로와상을 와플 기계에 넣습니다.",
+      "노릇하고 바삭하게 눌러 굽습니다.",
+      "슈가파우더나 아이스크림을 곁들여 완성합니다."
+    ],
+    "nutrition": { "calories": 380, "protein": 6, "carbs": 38, "fat": 22, "sodium": 380 },
+    "ingredients": [
+      { "name": "크로와상", "quantity": 1, "unit": "개", "required": true }
+    ]
+  },
+  {
+    "name": "단백질 쉐이크",
+    "category": "DRINK", "difficulty": "easy", "cookingTime": 5, "servings": 1,
+    "steps": [
+      "셰이커나 믹서기에 우유를 붓습니다.",
+      "단백질 파우더를 넣습니다.",
+      "바나나를 넣고 함께 갈거나 흔듭니다.",
+      "컵에 담아 완성합니다."
+    ],
+    "nutrition": { "calories": 280, "protein": 32, "carbs": 28, "fat": 6, "sodium": 180 },
+    "ingredients": [
+      { "name": "우유", "quantity": 250, "unit": "ml", "required": true },
+      { "name": "단백질 파우더", "quantity": 1, "unit": "스쿱", "required": true },
+      { "name": "바나나", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "딸기 라떼",
+    "category": "DRINK", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "딸기를 으깨 설탕과 섞어 딸기청을 만듭니다.",
+      "컵에 딸기청을 깝니다.",
+      "얼음을 넣고 우유를 붓습니다.",
+      "가볍게 저어 완성합니다."
+    ],
+    "nutrition": { "calories": 240, "protein": 7, "carbs": 38, "fat": 6, "sodium": 95 },
+    "ingredients": [
+      { "name": "딸기", "quantity": 8, "unit": "개", "required": true },
+      { "name": "우유", "quantity": 200, "unit": "ml", "required": true }
+    ]
+  },
+  {
+    "name": "밀크티",
+    "category": "DRINK", "difficulty": "easy", "cookingTime": 15, "servings": 1,
+    "steps": [
+      "냄비에 물을 끓이고 홍차 티백을 진하게 우립니다.",
+      "우유를 붓고 약불로 데웁니다.",
+      "설탕이나 시럽으로 단맛을 맞춥니다.",
+      "얼음을 넣은 컵에 부어 완성합니다."
+    ],
+    "nutrition": { "calories": 180, "protein": 6, "carbs": 26, "fat": 6, "sodium": 85 },
+    "ingredients": [
+      { "name": "홍차 티백", "quantity": 2, "unit": "개", "required": true },
+      { "name": "우유", "quantity": 200, "unit": "ml", "required": true }
+    ]
+  },
+  {
+    "name": "부대찌개",
+    "category": "ETC", "difficulty": "easy", "cookingTime": 30, "servings": 3,
+    "steps": [
+      "냄비에 김치, 햄, 소시지, 두부를 보기 좋게 담습니다.",
+      "고춧가루, 다진 마늘, 간장으로 양념장을 올립니다.",
+      "육수를 붓고 끓입니다.",
+      "끓을 때 라면사리를 넣어 완성합니다."
+    ],
+    "nutrition": { "calories": 460, "protein": 22, "carbs": 34, "fat": 26, "sodium": 1400 },
+    "ingredients": [
+      { "name": "김치", "quantity": 200, "unit": "g", "required": true },
+      { "name": "햄", "quantity": 150, "unit": "g", "required": true },
+      { "name": "소시지", "quantity": 4, "unit": "개", "required": false },
+      { "name": "두부", "quantity": 0.5, "unit": "모", "required": false },
+      { "name": "라면사리", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "짜장면",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 30, "servings": 2,
+    "steps": [
+      "양파, 감자, 돼지고기를 깍둑썰기 합니다.",
+      "팬에 춘장을 기름에 볶아 짜장을 만듭니다.",
+      "재료를 볶고 물과 전분을 풀어 걸쭉하게 끓입니다.",
+      "삶은 중화면 위에 부어 완성합니다."
+    ],
+    "nutrition": { "calories": 620, "protein": 18, "carbs": 92, "fat": 20, "sodium": 1300 },
+    "ingredients": [
+      { "name": "중화면", "quantity": 200, "unit": "g", "required": true },
+      { "name": "춘장", "quantity": 3, "unit": "큰술", "required": true },
+      { "name": "돼지고기", "quantity": 150, "unit": "g", "required": false },
+      { "name": "양파", "quantity": 1, "unit": "개", "required": false },
+      { "name": "감자", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "짬뽕",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 30, "servings": 2,
+    "steps": [
+      "팬에 고춧가루와 다진 마늘을 볶아 고추기름을 냅니다.",
+      "해물과 야채를 넣고 볶습니다.",
+      "물을 붓고 끓여 얼큰한 국물을 만듭니다.",
+      "삶은 면을 그릇에 담고 국물을 부어 완성합니다."
+    ],
+    "nutrition": { "calories": 540, "protein": 24, "carbs": 80, "fat": 14, "sodium": 1600 },
+    "ingredients": [
+      { "name": "중화면", "quantity": 200, "unit": "g", "required": true },
+      { "name": "오징어", "quantity": 100, "unit": "g", "required": false },
+      { "name": "새우", "quantity": 60, "unit": "g", "required": false },
+      { "name": "양배추", "quantity": 0.2, "unit": "통", "required": false },
+      { "name": "양파", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "탕수육",
+    "category": "SIDE", "difficulty": "hard", "cookingTime": 40, "servings": 3,
+    "steps": [
+      "돼지고기를 전분과 계란으로 반죽해 튀깁니다.",
+      "한 번 더 튀겨 바삭하게 만듭니다.",
+      "물, 식초, 설탕, 간장으로 소스를 끓이고 전분물로 농도를 냅니다.",
+      "야채를 넣은 소스에 튀긴 고기를 버무려 완성합니다."
+    ],
+    "nutrition": { "calories": 520, "protein": 22, "carbs": 48, "fat": 26, "sodium": 760 },
+    "ingredients": [
+      { "name": "돼지고기", "quantity": 400, "unit": "g", "required": true },
+      { "name": "전분", "quantity": 1, "unit": "컵", "required": true },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false },
+      { "name": "당근", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "마파두부",
+    "category": "SIDE", "difficulty": "medium", "cookingTime": 20, "servings": 2,
+    "steps": [
+      "두부를 깍둑썰기 해 살짝 데칩니다.",
+      "팬에 다진 돼지고기를 볶습니다.",
+      "두반장과 고춧가루, 다진 마늘을 넣어 볶습니다.",
+      "물과 두부를 넣고 전분물로 농도를 내 완성합니다."
+    ],
+    "nutrition": { "calories": 300, "protein": 20, "carbs": 12, "fat": 19, "sodium": 980 },
+    "ingredients": [
+      { "name": "두부", "quantity": 1, "unit": "모", "required": true },
+      { "name": "돼지고기", "quantity": 120, "unit": "g", "required": true },
+      { "name": "대파", "quantity": 1, "unit": "대", "required": false }
+    ]
+  },
+  {
+    "name": "가츠동",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 25, "servings": 1,
+    "steps": [
+      "돈가스를 바삭하게 튀기거나 데웁니다.",
+      "팬에 간장, 설탕, 물로 소스를 만들고 양파를 익힙니다.",
+      "한입 크기로 썬 돈가스를 넣고 계란을 풀어 끼얹습니다.",
+      "반숙으로 익혀 밥 위에 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 680, "protein": 26, "carbs": 84, "fat": 26, "sodium": 1100 },
+    "ingredients": [
+      { "name": "돈가스", "quantity": 1, "unit": "장", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "계란", "quantity": 2, "unit": "개", "required": true },
+      { "name": "양파", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "오야코동",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 20, "servings": 1,
+    "steps": [
+      "닭고기를 한입 크기로 썹니다.",
+      "팬에 간장, 설탕, 물, 양파를 넣고 끓입니다.",
+      "닭고기를 넣어 익힙니다.",
+      "계란을 풀어 끼얹고 반숙으로 익혀 밥에 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 560, "protein": 30, "carbs": 76, "fat": 14, "sodium": 980 },
+    "ingredients": [
+      { "name": "닭고기", "quantity": 150, "unit": "g", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "계란", "quantity": 2, "unit": "개", "required": true },
+      { "name": "양파", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "돈가스",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 30, "servings": 2,
+    "steps": [
+      "돼지고기 등심을 두드려 펴고 소금, 후추로 밑간합니다.",
+      "밀가루, 계란물, 빵가루 순으로 옷을 입힙니다.",
+      "170도 기름에 노릇하게 튀깁니다.",
+      "먹기 좋게 썰어 소스를 곁들여 완성합니다."
+    ],
+    "nutrition": { "calories": 620, "protein": 30, "carbs": 42, "fat": 36, "sodium": 720 },
+    "ingredients": [
+      { "name": "돼지고기", "quantity": 300, "unit": "g", "required": true },
+      { "name": "빵가루", "quantity": 1.5, "unit": "컵", "required": true },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false },
+      { "name": "밀가루", "quantity": 0.5, "unit": "컵", "required": false }
+    ]
+  },
+  {
+    "name": "참치마요덮밥",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "참치캔의 기름을 빼고 마요네즈와 섞습니다.",
+      "그릇에 따뜻한 밥을 담습니다.",
+      "참치마요를 밥 위에 올립니다.",
+      "계란 프라이와 김가루를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 560, "protein": 24, "carbs": 70, "fat": 20, "sodium": 720 },
+    "ingredients": [
+      { "name": "참치캔", "quantity": 1, "unit": "개", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "마요네즈", "quantity": 2, "unit": "큰술", "required": false },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "스팸마요덮밥",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 10, "servings": 1,
+    "steps": [
+      "스팸을 깍둑썰기 해 팬에 노릇하게 굽습니다.",
+      "그릇에 밥을 담고 구운 스팸을 올립니다.",
+      "계란 프라이를 올립니다.",
+      "마요네즈와 간장을 살짝 둘러 완성합니다."
+    ],
+    "nutrition": { "calories": 640, "protein": 22, "carbs": 72, "fat": 28, "sodium": 1200 },
+    "ingredients": [
+      { "name": "스팸", "quantity": 0.5, "unit": "캔", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false },
+      { "name": "마요네즈", "quantity": 1, "unit": "큰술", "required": false }
+    ]
+  },
+  {
+    "name": "닭갈비",
+    "category": "SIDE", "difficulty": "medium", "cookingTime": 30, "servings": 3,
+    "steps": [
+      "닭다리살을 고추장, 고춧가루, 간장, 마늘로 양념해 재웁니다.",
+      "양배추, 고구마, 떡을 큼직하게 썹니다.",
+      "팬에 닭고기를 볶다가 야채와 떡을 넣습니다.",
+      "센 불에서 익혀 깻잎을 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 440, "protein": 30, "carbs": 32, "fat": 20, "sodium": 1050 },
+    "ingredients": [
+      { "name": "닭고기", "quantity": 500, "unit": "g", "required": true },
+      { "name": "고추장", "quantity": 2, "unit": "큰술", "required": true },
+      { "name": "양배추", "quantity": 0.25, "unit": "통", "required": false },
+      { "name": "고구마", "quantity": 1, "unit": "개", "required": false },
+      { "name": "떡", "quantity": 100, "unit": "g", "required": false }
+    ]
+  },
+  {
+    "name": "찜닭",
+    "category": "ETC", "difficulty": "medium", "cookingTime": 40, "servings": 3,
+    "steps": [
+      "닭을 끓는 물에 데쳐 기름기를 뺍니다.",
+      "간장, 설탕, 마늘, 물로 양념장을 만듭니다.",
+      "냄비에 닭, 감자, 당근, 양파를 넣고 양념을 부어 끓입니다.",
+      "당면을 넣고 국물이 졸면 청양고추를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 480, "protein": 32, "carbs": 44, "fat": 18, "sodium": 1200 },
+    "ingredients": [
+      { "name": "닭고기", "quantity": 600, "unit": "g", "required": true },
+      { "name": "당면", "quantity": 100, "unit": "g", "required": false },
+      { "name": "감자", "quantity": 2, "unit": "개", "required": false },
+      { "name": "당근", "quantity": 1, "unit": "개", "required": false },
+      { "name": "양파", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "갈비찜",
+    "category": "ETC", "difficulty": "hard", "cookingTime": 90, "servings": 4,
+    "steps": [
+      "소갈비를 찬물에 담가 핏물을 뺀 뒤 데칩니다.",
+      "간장, 배즙, 설탕, 마늘로 양념장을 만듭니다.",
+      "냄비에 갈비와 양념, 물을 넣고 약불에서 푹 끓입니다.",
+      "무, 당근, 밤을 넣고 국물이 졸 때까지 조려 완성합니다."
+    ],
+    "nutrition": { "calories": 520, "protein": 34, "carbs": 26, "fat": 30, "sodium": 1150 },
+    "ingredients": [
+      { "name": "소갈비", "quantity": 800, "unit": "g", "required": true },
+      { "name": "무", "quantity": 0.3, "unit": "개", "required": false },
+      { "name": "당근", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "감자탕",
+    "category": "ETC", "difficulty": "medium", "cookingTime": 60, "servings": 3,
+    "steps": [
+      "돼지등뼈를 찬물에 담가 핏물을 빼고 데칩니다.",
+      "냄비에 등뼈, 감자, 우거지를 넣고 끓입니다.",
+      "고춧가루, 된장, 다진 마늘로 양념합니다.",
+      "푹 끓여 깻잎과 들깨가루를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 480, "protein": 30, "carbs": 28, "fat": 26, "sodium": 1350 },
+    "ingredients": [
+      { "name": "돼지등뼈", "quantity": 800, "unit": "g", "required": true },
+      { "name": "감자", "quantity": 3, "unit": "개", "required": false },
+      { "name": "우거지", "quantity": 200, "unit": "g", "required": false }
+    ]
+  },
+  {
+    "name": "콩국수",
+    "category": "MAIN", "difficulty": "medium", "cookingTime": 30, "servings": 2,
+    "steps": [
+      "불린 콩을 삶아 껍질을 벗깁니다.",
+      "콩과 물을 믹서기에 곱게 갈아 콩물을 만듭니다.",
+      "소면을 삶아 찬물에 헹굽니다.",
+      "그릇에 면을 담고 차가운 콩물을 부어 오이채를 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 460, "protein": 22, "carbs": 70, "fat": 10, "sodium": 320 },
+    "ingredients": [
+      { "name": "소면", "quantity": 200, "unit": "g", "required": true },
+      { "name": "콩", "quantity": 150, "unit": "g", "required": true },
+      { "name": "오이", "quantity": 0.5, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "물냉면",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 20, "servings": 2,
+    "steps": [
+      "냉면 육수를 차갑게 준비합니다.",
+      "냉면 면을 삶아 찬물에 헹궈 사리를 만듭니다.",
+      "그릇에 면을 담고 차가운 육수를 붓습니다.",
+      "오이, 무절임, 삶은 계란을 올려 완성합니다."
+    ],
+    "nutrition": { "calories": 420, "protein": 14, "carbs": 80, "fat": 5, "sodium": 1300 },
+    "ingredients": [
+      { "name": "냉면 면", "quantity": 2, "unit": "인분", "required": true },
+      { "name": "냉면 육수", "quantity": 600, "unit": "ml", "required": true },
+      { "name": "오이", "quantity": 0.5, "unit": "개", "required": false },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "어묵탕",
+    "category": "ETC", "difficulty": "easy", "cookingTime": 25, "servings": 3,
+    "steps": [
+      "멸치와 다시마로 육수를 냅니다.",
+      "어묵을 꼬치에 끼우거나 먹기 좋게 썹니다.",
+      "육수에 어묵과 무를 넣고 끓입니다.",
+      "대파와 국간장으로 간을 맞춰 완성합니다."
+    ],
+    "nutrition": { "calories": 180, "protein": 12, "carbs": 18, "fat": 6, "sodium": 1100 },
+    "ingredients": [
+      { "name": "어묵", "quantity": 300, "unit": "g", "required": true },
+      { "name": "무", "quantity": 0.2, "unit": "개", "required": false },
+      { "name": "대파", "quantity": 1, "unit": "대", "required": false }
+    ]
+  },
+  {
+    "name": "닭가슴살 스테이크",
+    "category": "SIDE", "difficulty": "easy", "cookingTime": 20, "servings": 1,
+    "steps": [
+      "닭가슴살을 도톰하게 펴고 소금, 후추, 허브로 밑간합니다.",
+      "팬에 올리브유를 두르고 중불로 달굽니다.",
+      "양면을 노릇하게 굽고 속까지 익힙니다.",
+      "구운 채소를 곁들여 완성합니다."
+    ],
+    "nutrition": { "calories": 240, "protein": 40, "carbs": 4, "fat": 7, "sodium": 380 },
+    "ingredients": [
+      { "name": "닭가슴살", "quantity": 200, "unit": "g", "required": true },
+      { "name": "양파", "quantity": 0.3, "unit": "개", "required": false },
+      { "name": "파프리카", "quantity": 0.3, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "새우볶음밥",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 15, "servings": 1,
+    "steps": [
+      "새우를 손질하고 야채를 잘게 썹니다.",
+      "팬에 기름을 두르고 계란을 먼저 볶습니다.",
+      "새우와 야채를 넣고 볶습니다.",
+      "밥을 넣고 굴소스와 소금으로 간해 볶아 완성합니다."
+    ],
+    "nutrition": { "calories": 500, "protein": 22, "carbs": 68, "fat": 15, "sodium": 820 },
+    "ingredients": [
+      { "name": "새우", "quantity": 100, "unit": "g", "required": true },
+      { "name": "밥", "quantity": 1, "unit": "공기", "required": true },
+      { "name": "계란", "quantity": 1, "unit": "개", "required": false },
+      { "name": "당근", "quantity": 0.3, "unit": "개", "required": false }
+    ]
+  },
+  {
+    "name": "부추전",
+    "category": "SIDE", "difficulty": "easy", "cookingTime": 15, "servings": 2,
+    "steps": [
+      "부추를 적당한 길이로 자릅니다.",
+      "부침가루와 물을 섞어 반죽하고 부추를 넣습니다.",
+      "팬에 기름을 두르고 반죽을 얇게 펴 부칩니다.",
+      "양면을 바삭하게 익혀 완성합니다."
+    ],
+    "nutrition": { "calories": 260, "protein": 6, "carbs": 36, "fat": 11, "sodium": 560 },
+    "ingredients": [
+      { "name": "부추", "quantity": 1, "unit": "줌", "required": true },
+      { "name": "부침가루", "quantity": 1, "unit": "컵", "required": true }
+    ]
+  },
+  {
+    "name": "칼국수",
+    "category": "MAIN", "difficulty": "easy", "cookingTime": 30, "servings": 2,
+    "steps": [
+      "멸치와 다시마로 육수를 냅니다.",
+      "애호박과 감자를 채 썰어 육수에 넣고 끓입니다.",
+      "칼국수 면을 넣고 면이 익을 때까지 끓입니다.",
+      "다진 마늘과 국간장으로 간을 맞춰 완성합니다."
+    ],
+    "nutrition": { "calories": 440, "protein": 14, "carbs": 80, "fat": 6, "sodium": 1150 },
+    "ingredients": [
+      { "name": "칼국수 면", "quantity": 2, "unit": "인분", "required": true },
+      { "name": "애호박", "quantity": 0.5, "unit": "개", "required": false },
+      { "name": "감자", "quantity": 1, "unit": "개", "required": false }
+    ]
   }
 ]
