@@ -261,8 +261,10 @@ public class UserService {
         recipeFavoriteRepository.deleteAllByUserInBatch(user);
         recipeFavoriteRepository.deleteAllByRecipeOwnerInBatch(user);
         
-        // 레시피 본체 벌크 삭제
-        recipeRepository.deleteAllByUserInBatch(user);
+        // 레시피 본체 삭제 — 벌크 JPQL DELETE는 cascade를 타지 않아 자식 테이블
+        // (recipe_ingredients, recipe_steps) row가 고아로 남아 FK 위반(409)이 난다.
+        // 엔티티 단위 삭제로 cascade·orphanRemoval을 태워 자식까지 함께 정리한다.
+        recipeRepository.deleteAll(recipeRepository.findByUser(user));
         
         shoppingItemRepository.deleteAllByUserInBatch(user);
         refreshTokenService.revokeAllForUser(user);
