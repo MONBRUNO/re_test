@@ -2887,3 +2887,16 @@ User를 참조하는 11개 엔티티(Fridge·FridgeMember·Ingredient·ActivityL
 - 레시피 데이터를 `src/main/resources/seed-recipes.json`으로 분리 — **76개** (찌개·국·볶음·조림·구이·밥·면·반찬·간식 + 마라탕·로제 파스타·연어 포케·감바스·짜장면·돈가스 등 인기 메뉴)
 - `RecipeSeeder`를 JSON 로딩 방식으로 재작성. **이름 기준 멱등** — 이미 같은 이름의 레시피가 있으면 건너뛴다. JSON에 항목만 추가하면 다음 배포 때 신규 레시피만 시드됨 (레시피 추가가 파일 편집만으로)
 - 항목별 예외 처리 — JSON 오타(잘못된 `category`/`difficulty` 등)가 있어도 해당 레시피만 건너뛰고 앱 부팅은 정상 진행 (시드는 startup 단계라 throw 시 부팅 실패 위험)
+
+---
+
+## 🍽️ AI 식단 생성 엔드포인트 (Gemini) (2026-05-22)
+
+식단 추천 메뉴가 매일 반복적이고, 카테고리 기반 로직이 "떡볶이를 아침에" 같은 어색한 배치를 막지 못하던 문제 — 식단 구성 판단을 LLM에 위임.
+
+- **`POST /api/recipes/meal-plan`** 신규 — body `{"recipes":[...], "ingredients":[...], "days":7}` → 응답 `{"plan":[{"breakfast","lunch","dinner"}, ...]}`
+- `MealPlanService` — Gemini(`gemini-2.5-flash`, structured output)에게 끼니 적합성(아침은 가벼운 메뉴, 떡볶이·튀김·찌개 제외)·다양성·보유 식재료를 고려한 N일치 식단 생성을 맡김. `temperature=0.7`로 다양성 확보
+- `RateLimitFilter`에 10회/분/IP 제한 추가
+- 실패 시 빈 `plan` 응답 → 프론트가 규칙 기반 순환 로직으로 fallback
+
+**커밋**: `5dbfc16`
