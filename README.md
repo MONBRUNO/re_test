@@ -2839,3 +2839,41 @@ User를 참조하는 11개 엔티티(Fridge·FridgeMember·Ingredient·ActivityL
 - **네이버 "등록되지 않은 사이트"(`disp_stat=208`)**: Callback URL은 맞았는데 **서비스 URL**에 백엔드 API 주소를 넣은 게 원인. 서비스 URL은 사용자가 보는 웹사이트(Vercel 프론트) 주소여야 함 → `https://naengbuhae-hazel.vercel.app`로 교정해 해결. (`disp_stat=207`은 redirect_uri 미등록, `208`은 서비스 URL 문제로 구분됨)
 - **영수증 인식 `API key not valid`**: Render의 `GEMINI_API_KEY` 값이 로컬 `.env`와 미세하게 달랐던 것(따옴표·공백 등). 키 자체는 유효 — 값만 정확히 재입력해 해결. 사진 인식·영수증 인식은 동일한 Gemini 2.5 Flash + 동일 키 사용
 - 디버그 로깅 추가: `OAuth2FailureHandler` 예외 원인, `GlobalExceptionHandler`의 `DataIntegrityViolation` root cause 노출 (`02f359a`, `269ac2b`)
+
+---
+
+## 📱 앱 구글 로그인 — 외부 브라우저(Custom Tab) 흐름 지원 (2026-05-22)
+
+구글은 임베디드 WebView OAuth를 `disallowed_useragent`로 차단한다. 앱이 `flutter_web_auth_2`로 구글 로그인을 외부 브라우저(Custom Tab)에서 진행할 수 있도록 백엔드가 앱용 콜백을 지원.
+
+- **`OAuthClientTypeFilter` 추가** — 앱이 `/oauth2/authorization/google?client=app`을 열면 `oauth_client=app` 쿠키를 심는다. provider 콜백까지 모두 같은 도메인이라 쿠키가 round-trip됨
+- **`OAuth2SuccessHandler` / `OAuth2FailureHandler`** — 이 쿠키가 있으면 웹(http) 대신 `naengbuhae://oauth/callback` 커스텀 스킴으로 리다이렉트
+- **`SecurityConfig`** — `OAuthClientTypeFilter`를 `OAuth2AuthorizationRequestRedirectFilter` 앞에 등록 (302 전에 쿠키를 응답에 실어야 함)
+- 카카오·네이버 앱 로그인은 기존 WebView 그대로 (구글만 임베디드 WebView를 막기 때문)
+
+**커밋**: `c6bdad7`
+
+---
+
+## 🐛 냉장고 멤버 목록이 본인만 보이는 버그 수정 (2026-05-22)
+
+공유 냉장고에서 각 멤버가 멤버 목록에 **자기 자신만** 보이던 버그 (냉장고 이름·소유자는 정상).
+
+`FridgeRepository.findAllForMember`가 필터 조건을 `JOIN f.members fm WHERE fm.user = :user`로 걸었는데, `@EntityGraph`가 `members`를 fetch할 때 그 JOIN을 재사용 → fetch된 `members` 컬렉션이 "호출자 본인 1건"으로만 채워졌다.
+
+- 필터를 서브쿼리(`WHERE f.id IN (SELECT fm.fridge.id FROM FridgeMember fm WHERE fm.user = :user)`)로 분리해 `members` fetch가 걸러지지 않게 수정
+
+**커밋**: `22f665c`
+
+---
+
+## 🥗 식재료 영양정보 Gemini 일괄 조회 엔드포인트 (2026-05-22)
+
+영양분석 페이지의 식재료별 칼로리 정확도 — 웹 내장 `nutritionDatabase`(기본 식재료 23종)로는 브랜드·가공식품이 전부 기본값으로 떨어지던 문제 대응.
+
+- **`POST /api/ingredients/nutrition`** 신규 — body `{"names":[...]}` → 응답 `{"items":[{name,calories,protein,carbs,fat}, ...]}` (100g 기준)
+- `IngredientNutritionService` — 사진 인식과 동일한 Gemini(`gemini-2.5-flash`, structured output) 사용. 영양분석 페이지 진입 시 1회 호출이라 무료 한도 내
+- `RateLimitFilter`에 10회/분/IP 제한 추가
+- 조회 실패 시 빈 `items` 응답 → 프론트가 내장 DB로 fallback
+
+**커밋**: `caafa80`
