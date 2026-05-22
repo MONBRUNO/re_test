@@ -2877,3 +2877,13 @@ User를 참조하는 11개 엔티티(Fridge·FridgeMember·Ingredient·ActivityL
 - 조회 실패 시 빈 `items` 응답 → 프론트가 내장 DB로 fallback
 
 **커밋**: `caafa80`
+
+---
+
+## 🍳 시드 레시피 확장 (8 → 40개) + JSON 리소스화 (2026-05-22)
+
+레시피 추천·식단의 다양성 부족 — 원인은 레시피 풀이 `RecipeSeeder` 하드코딩 **8개**뿐이었던 것.
+
+- 레시피 데이터를 `src/main/resources/seed-recipes.json`으로 분리 — 한식 일상 레시피 **40개** (찌개·국·볶음·조림·구이·밥·면·반찬·간식 등)
+- `RecipeSeeder`를 JSON 로딩 방식으로 재작성. **이름 기준 멱등** — 이미 같은 이름의 레시피가 있으면 건너뛴다. JSON에 항목만 추가하면 다음 배포 때 신규 레시피만 시드됨 (레시피 추가가 파일 편집만으로)
+- 항목별 예외 처리 — JSON 오타(잘못된 `category`/`difficulty` 등)가 있어도 해당 레시피만 건너뛰고 앱 부팅은 정상 진행 (시드는 startup 단계라 throw 시 부팅 실패 위험)

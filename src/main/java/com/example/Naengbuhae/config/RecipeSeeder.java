@@ -12,21 +12,28 @@ import com.example.Naengbuhae.repository.RecipeRepository;
 import com.example.Naengbuhae.user.User;
 import com.example.Naengbuhae.user.UserRepository;
 import com.example.Naengbuhae.user.UserRole;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-// 부팅 시 recipe 테이블이 비어있으면 프론트의 8개 하드코딩 레시피를 자동 시드.
-// 소유자는 'system' admin 계정 (없으면 자동 생성).
+// 부팅 시 resources/seed-recipes.json의 레시피를 시드한다. 소유자는 'system' admin 계정.
+// 이름 기준 멱등 — 이미 같은 이름의 레시피가 있으면 건너뛰므로, JSON에 항목을 추가하면
+// 다음 배포 때 신규 레시피만 추가된다 ("레시피 더 추가"가 JSON 편집만으로 됨).
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
@@ -39,22 +46,48 @@ public class RecipeSeeder {
     private final PasswordEncoder passwordEncoder;
     private final PlatformTransactionManager transactionManager;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Bean
     public ApplicationRunner seedRecipes() {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         return args -> tx.executeWithoutResult(status -> {
-            if (recipeRepository.count() > 0) {
-                log.info("[RecipeSeeder] recipe 테이블이 비어있지 않아 시드를 건너뜁니다.");
-                return;
-            }
-
             User systemUser = userRepository.findByUsername(SYSTEM_USERNAME)
                     .orElseGet(this::createSystemUser);
 
-            List<Recipe> recipes = buildRecipes(systemUser);
-            recipeRepository.saveAll(recipes);
-            log.info("[RecipeSeeder] {}개의 기본 레시피를 시드했습니다.", recipes.size());
+            // 이미 시드된 system 레시피 이름 — 중복 추가 방지 (이름 기준 멱등)
+            Set<String> existingNames = recipeRepository.findByUser(systemUser).stream()
+                    .map(Recipe::getName)
+                    .collect(Collectors.toSet());
+
+            List<RecipeSeed> seeds = loadSeeds();
+            int added = 0;
+            for (RecipeSeed s : seeds) {
+                if (s.name() == null || existingNames.contains(s.name())) continue;
+                Recipe recipe;
+                try {
+                    recipe = s.toRecipe(systemUser);
+                } catch (Exception e) {
+                    // JSON 항목 오타(잘못된 category/difficulty 등)로 시드 전체·앱 부팅이
+                    // 죽지 않도록 — 해당 항목만 건너뛴다.
+                    log.warn("[RecipeSeeder] 레시피 '{}' 변환 실패 — 건너뜀: {}", s.name(), e.getMessage());
+                    continue;
+                }
+                recipeRepository.save(recipe);
+                added++;
+            }
+            log.info("[RecipeSeeder] 레시피 시드 — 신규 {}개 추가 (JSON {}개 / 기존 {}개)",
+                    added, seeds.size(), existingNames.size());
         });
+    }
+
+    private List<RecipeSeed> loadSeeds() {
+        try (InputStream in = new ClassPathResource("seed-recipes.json").getInputStream()) {
+            return objectMapper.readValue(in, new TypeReference<List<RecipeSeed>>() {});
+        } catch (Exception e) {
+            log.error("[RecipeSeeder] seed-recipes.json 로드 실패 — 시드를 건너뜁니다.", e);
+            return List.of();
+        }
     }
 
     private User createSystemUser() {
@@ -80,138 +113,39 @@ public class RecipeSeeder {
         return user;
     }
 
-    private List<Recipe> buildRecipes(User owner) {
-        return List.of(
-                recipe(owner, "계란볶음밥", RecipeCategory.MAIN, Difficulty.easy, 15, 2,
-                        List.of(
-                                "계란을 풀어서 소금으로 간을 합니다.",
-                                "팬에 기름을 두르고 계란을 먼저 볶아줍니다.",
-                                "야채를 잘게 썰어 함께 볶습니다.",
-                                "밥을 넣고 고루 섞으면서 볶습니다.",
-                                "간장이나 소금으로 간을 맞추고 완성합니다."
-                        ),
-                        new Nutrition(520, 18, 72, 16, 680),
-                        List.of(
-                                ing("계란", 2.0, "개", true),
-                                ing("밥", 2.0, "공기", true),
-                                ing("양파", 0.5, "개", false),
-                                ing("당근", 0.3, "개", false),
-                                ing("파", 1.0, "줌", false)
-                        )),
-                recipe(owner, "닭가슴살 샐러드", RecipeCategory.SALAD, Difficulty.easy, 20, 2,
-                        List.of(
-                                "닭가슴살을 삶아서 결대로 찢어줍니다.",
-                                "양상추를 한입 크기로 뜯어줍니다.",
-                                "토마토와 오이를 먹기 좋은 크기로 썰어줍니다.",
-                                "모든 재료를 그릇에 담고 드레싱을 뿌려 완성합니다."
-                        ),
-                        new Nutrition(180, 28, 8, 4, 320),
-                        List.of(
-                                ing("닭가슴살", 200.0, "g", true),
-                                ing("양상추", 1.0, "개", true),
-                                ing("토마토", 1.0, "개", false),
-                                ing("오이", 0.5, "개", false)
-                        )),
-                recipe(owner, "우유 스크램블 에그", RecipeCategory.SNACK, Difficulty.easy, 10, 1,
-                        List.of(
-                                "계란과 우유를 잘 섞어줍니다.",
-                                "팬에 버터를 녹이고 약불로 조절합니다.",
-                                "계란 혼합물을 넣고 천천히 저어가며 익힙니다.",
-                                "치즈를 올려 완성합니다."
-                        ),
-                        new Nutrition(280, 21, 4, 20, 420),
-                        List.of(
-                                ing("계란", 3.0, "개", true),
-                                ing("우유", 50.0, "ml", true),
-                                ing("치즈", 1.0, "장", false)
-                        )),
-                recipe(owner, "닭가슴살 볶음", RecipeCategory.SIDE, Difficulty.easy, 15, 2,
-                        List.of(
-                                "닭가슴살을 한입 크기로 잘라줍니다.",
-                                "야채를 먹기 좋은 크기로 썰어줍니다.",
-                                "팬에 기름을 두르고 닭가슴살을 먼저 볶습니다.",
-                                "야채를 넣고 함께 볶아줍니다.",
-                                "간장, 올리고당으로 간을 맞춰 완성합니다."
-                        ),
-                        new Nutrition(240, 38, 12, 5, 580),
-                        List.of(
-                                ing("닭가슴살", 300.0, "g", true),
-                                ing("양파", 1.0, "개", false),
-                                ing("브로콜리", 0.5, "개", false),
-                                ing("파프리카", 0.5, "개", false)
-                        )),
-                recipe(owner, "당근 계란찜", RecipeCategory.SIDE, Difficulty.easy, 25, 2,
-                        List.of(
-                                "계란을 풀어서 체에 거릅니다.",
-                                "당근을 잘게 다져서 넣습니다.",
-                                "물을 계란과 1:1 비율로 넣고 섞습니다.",
-                                "찜기에 넣고 약불로 20분간 찝니다.",
-                                "파를 올려 완성합니다."
-                        ),
-                        new Nutrition(160, 14, 6, 10, 280),
-                        List.of(
-                                ing("계란", 4.0, "개", true),
-                                ing("당근", 0.5, "개", true),
-                                ing("파", 1.0, "줌", false)
-                        )),
-                recipe(owner, "양상추 샌드위치", RecipeCategory.SNACK, Difficulty.easy, 10, 1,
-                        List.of(
-                                "식빵을 가볍게 구워줍니다.",
-                                "계란을 프라이로 익힙니다.",
-                                "토마토를 슬라이스합니다.",
-                                "식빵에 재료를 차례로 올려 완성합니다."
-                        ),
-                        new Nutrition(320, 15, 38, 12, 520),
-                        List.of(
-                                ing("식빵", 2.0, "장", true),
-                                ing("양상추", 2.0, "장", true),
-                                ing("토마토", 0.5, "개", false),
-                                ing("치즈", 1.0, "장", false),
-                                ing("계란", 1.0, "개", false)
-                        )),
-                recipe(owner, "우유 요거트 스무디", RecipeCategory.DRINK, Difficulty.easy, 5, 1,
-                        List.of(
-                                "모든 재료를 믹서기에 넣습니다.",
-                                "부드럽게 갈아줍니다.",
-                                "컵에 담아 완성합니다."
-                        ),
-                        new Nutrition(220, 12, 36, 4, 150),
-                        List.of(
-                                ing("우유", 200.0, "ml", true),
-                                ing("요거트", 100.0, "g", true),
-                                ing("바나나", 1.0, "개", false),
-                                ing("딸기", 5.0, "개", false)
-                        )),
-                recipe(owner, "소고기 야채볶음", RecipeCategory.SIDE, Difficulty.medium, 20, 2,
-                        List.of(
-                                "소고기를 간장, 설탕, 마늘로 양념합니다.",
-                                "야채를 먹기 좋은 크기로 썰어줍니다.",
-                                "팬에 소고기를 먼저 볶습니다.",
-                                "야채를 넣고 함께 볶아 완성합니다."
-                        ),
-                        new Nutrition(280, 26, 14, 14, 720),
-                        List.of(
-                                ing("소고기", 200.0, "g", true),
-                                ing("양파", 1.0, "개", true),
-                                ing("당근", 0.5, "개", false),
-                                ing("브로콜리", 0.5, "개", false)
-                        ))
-        );
-    }
+    // === seed-recipes.json 파싱용 DTO (엔티티 아님) ===
 
-    private static Recipe recipe(User user, String name, RecipeCategory category, Difficulty difficulty,
-                                 int cookingTime, int servings, List<String> steps,
-                                 Nutrition nutrition, List<IngredientSpec> specs) {
-        Recipe recipe = new Recipe(user, name, category, difficulty, cookingTime, servings, null, steps, nutrition);
-        for (IngredientSpec s : specs) {
-            recipe.addIngredient(new RecipeIngredient(recipe, s.name, s.quantity, s.unit, s.required));
+    private record RecipeSeed(
+            String name,
+            String category,
+            String difficulty,
+            Integer cookingTime,
+            Integer servings,
+            List<String> steps,
+            NutritionSeed nutrition,
+            List<IngredientSeed> ingredients) {
+
+        Recipe toRecipe(User owner) {
+            Recipe recipe = new Recipe(
+                    owner,
+                    name,
+                    RecipeCategory.valueOf(category),
+                    Difficulty.valueOf(difficulty),
+                    cookingTime,
+                    servings,
+                    null,
+                    steps,
+                    new Nutrition(nutrition.calories(), nutrition.protein(),
+                            nutrition.carbs(), nutrition.fat(), nutrition.sodium()));
+            for (IngredientSeed i : ingredients) {
+                recipe.addIngredient(new RecipeIngredient(
+                        recipe, i.name(), i.quantity(), i.unit(), i.required()));
+            }
+            return recipe;
         }
-        return recipe;
     }
 
-    private static IngredientSpec ing(String name, Double quantity, String unit, boolean required) {
-        return new IngredientSpec(name, quantity, unit, required);
-    }
+    private record NutritionSeed(int calories, int protein, int carbs, int fat, int sodium) {}
 
-    private record IngredientSpec(String name, Double quantity, String unit, boolean required) {}
+    private record IngredientSeed(String name, double quantity, String unit, boolean required) {}
 }
