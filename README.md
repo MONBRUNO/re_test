@@ -2781,3 +2781,61 @@ PostgreSQL은 `ORDER BY`가 없으면 row 반환 순서를 보장하지 않음. 
 - `ShoppingItemRepository.findByUserOrderByIdAsc(User)` 추가 — 메서드명만으로 Spring Data JPA가 `ORDER BY id ASC` 생성
 - `ShoppingItemService.getMyShoppingList`만 새 메서드 사용
 - 다른 callsite(`addShoppingItems` 중복 검사, `getSuggestions` 필터)는 `Set`으로 변환해서 쓰기 때문에 정렬 무관 → 기존 `findByUser` 그대로 유지
+
+---
+
+## 🚀 Render 배포 (Docker 런타임) (2026-05-21)
+
+백엔드를 Render 무료 플랜에 배포. Render가 Java 네이티브 런타임을 deprecated해서 Docker 런타임으로 진행.
+
+- **`server.port=${PORT:8080}`** — Render 등 PaaS는 `PORT` 환경변수로 동적 포트를 주입. 로컬은 8080 fallback (`a124cb5`)
+- **`Dockerfile` 추가** — multistage: `eclipse-temurin:17-jdk`에서 `./gradlew bootJar -x test` 빌드 → `17-jre`에 `app.jar`만 복사 (`c78ee5d`)
+- **`.dockerignore` 추가** — `build/`, `.env`, secrets, `.git` 제외. `.env`는 절대 이미지에 포함하지 않음 — 시크릿은 Render Environment 탭으로 주입
+- **`server.forward-headers-strategy=framework`** — Render HTTPS 리버스 프록시 뒤에서 `X-Forwarded-*` 헤더를 신뢰. 없으면 OAuth `redirect_uri`가 `http://`로 생성돼 provider 등록값(`https://`)과 불일치 (`fad3429`)
+
+**배포 URL**: `https://naengbuhae.onrender.com` — `develop` 브랜치 auto-deploy
+
+**운영 메모**
+- 무료 플랜은 비활성 시 인스턴스가 잠들어 첫 요청이 ~50초 지연(콜드 스타트)
+- DB/JWT/OAuth/`GEMINI_API_KEY` 등 모든 시크릿은 Render Environment 탭에 입력. 값에 따옴표·공백·줄바꿈이 섞이지 않게 주의
+
+---
+
+## 🩹 회원 탈퇴 409 (DataIntegrityViolation) 수정 (2026-05-22)
+
+배포 후 `DELETE /user/me`가 `409` 반환 — `update or delete on table "users" violates foreign key constraint ... on table "refresh_tokens"`. 원인이 두 겹이었음.
+
+#### 1) 파생 `deleteByUser`가 영속성 컨텍스트 큐에서 유실
+
+`RefreshToken`/`FcmToken`/`UserToken`의 `deleteByUser`는 Spring Data **파생 삭제** — SELECT 후 `em.remove()`로 큐에만 쌓는다. 그런데 `deleteMyAccount` 안의 다른 `@Modifying(clearAutomatically = true)` 벌크 삭제가 실행되면 `em.clear()`가 그 큐를 통째로 버린다 → `refresh_tokens` row가 DB에 남아 `DELETE FROM users`에서 FK 위반.
+
+- 세 토큰 저장소의 `deleteByUser`를 **즉시 실행 벌크 `@Modifying @Query DELETE`**로 전환
+- `FridgeRepository.deleteAllByOwnerInBatch` 추가
+
+#### 2) 레시피 자식 테이블 cascade 누락
+
+`recipeRepository.deleteAllByUserInBatch`(벌크 JPQL DELETE)는 cascade를 타지 않아 `recipe_ingredients` / `recipe_steps` 자식 row가 고아로 남는다.
+
+- 레시피는 벌크 대신 **엔티티 단위 `deleteAll` + `flush()`**로 삭제해 `cascade`·`orphanRemoval`·`@ElementCollection` 정리를 태움
+
+#### `deleteMyAccount` 재구성 (2단계)
+
+1. 토큰류 포함 모든 연관 데이터를 즉시 벌크 SQL DELETE (자식 → 부모 순서)
+2. 자식 테이블이 있는 레시피만 엔티티 삭제 + `flush()` → 최종 사용자 삭제
+
+User를 참조하는 11개 엔티티(Fridge·FridgeMember·Ingredient·ActivityLog·Recipe·RecipeFavorite·Notification·ShoppingItem·RefreshToken·FcmToken·UserToken)를 전수 점검.
+
+> ⚠️ `UserServiceTest`의 `deleteMyAccount` 검증은 이미 존재하지 않는 `deleteByUser`(파생) 시그니처를 참조하는 stale 상태. `Dockerfile`이 `bootJar -x test`로 빌드하므로 배포엔 영향 없으나 추후 정리 필요.
+
+**커밋**: `0159711`, `1d94623`
+
+---
+
+## 🔑 배포 후 OAuth · AI 키 점검 (2026-05-22)
+
+코드 변경 없이 외부 콘솔·Render 환경변수만 손본 운영 작업 기록.
+
+- **OAuth redirect URI**: 카카오/구글/네이버 각 provider 콘솔에 배포 콜백 `https://naengbuhae.onrender.com/login/oauth2/code/{provider}` 등록
+- **네이버 "등록되지 않은 사이트"(`disp_stat=208`)**: Callback URL은 맞았는데 **서비스 URL**에 백엔드 API 주소를 넣은 게 원인. 서비스 URL은 사용자가 보는 웹사이트(Vercel 프론트) 주소여야 함 → `https://naengbuhae-hazel.vercel.app`로 교정해 해결. (`disp_stat=207`은 redirect_uri 미등록, `208`은 서비스 URL 문제로 구분됨)
+- **영수증 인식 `API key not valid`**: Render의 `GEMINI_API_KEY` 값이 로컬 `.env`와 미세하게 달랐던 것(따옴표·공백 등). 키 자체는 유효 — 값만 정확히 재입력해 해결. 사진 인식·영수증 인식은 동일한 Gemini 2.5 Flash + 동일 키 사용
+- 디버그 로깅 추가: `OAuth2FailureHandler` 예외 원인, `GlobalExceptionHandler`의 `DataIntegrityViolation` root cause 노출 (`02f359a`, `269ac2b`)
