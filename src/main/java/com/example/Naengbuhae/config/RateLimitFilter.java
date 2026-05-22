@@ -38,6 +38,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/nutrition/analyze", Bandwidth.builder()
                     .capacity(5).refillIntervally(5, Duration.ofMinutes(1)).build(),
             "/api/ingredients/nutrition", Bandwidth.builder()
+                    .capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build(),
+            "/api/recipes/meal-plan", Bandwidth.builder()
                     .capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build()
     );
 

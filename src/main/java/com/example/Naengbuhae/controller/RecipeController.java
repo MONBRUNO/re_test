@@ -7,15 +7,18 @@ import com.example.Naengbuhae.dto.RecipeMatchResponseDto;
 import com.example.Naengbuhae.dto.RecipeRequestDto;
 import com.example.Naengbuhae.dto.RecipeResponseDto;
 import com.example.Naengbuhae.service.AiRecipeService;
+import com.example.Naengbuhae.service.MealPlanService;
 import com.example.Naengbuhae.service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/recipes")
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class RecipeController {
 
     private final RecipeService recipeService;
     private final AiRecipeService aiRecipeService; // ✨ 완벽한 의존성 주입
+    private final MealPlanService mealPlanService;
 
     // POST: 레시피 등록 (로그인한 사용자와 연결)
     @PostMapping
@@ -93,5 +97,24 @@ public class RecipeController {
     public java.util.Map<String, Boolean> toggleFavorite(@PathVariable Long id, Principal principal) {
         boolean now = recipeService.toggleFavorite(id, principal.getName());
         return java.util.Map.of("favorite", now);
+    }
+
+    // POST: AI 식단 생성 — Gemini가 끼니 적합성·다양성을 고려해 식단표를 짜준다.
+    //   body: {"recipes": ["..."], "ingredients": ["..."], "days": 7}
+    //   응답: {"plan": [{"breakfast","lunch","dinner"}, ...]}
+    //   실패 시 빈 plan — 프론트가 규칙 기반 로직으로 fallback.
+    @PostMapping("/meal-plan")
+    public java.util.Map<String, Object> mealPlan(@RequestBody java.util.Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<String> recipes = (List<String>) body.getOrDefault("recipes", List.of());
+        @SuppressWarnings("unchecked")
+        List<String> ingredients = (List<String>) body.getOrDefault("ingredients", List.of());
+        int days = body.get("days") instanceof Number n ? n.intValue() : 7;
+        try {
+            return java.util.Map.of("plan", mealPlanService.generate(recipes, ingredients, days));
+        } catch (Exception e) {
+            log.warn("AI 식단 생성 실패", e);
+            return java.util.Map.of("plan", List.of());
+        }
     }
 }
