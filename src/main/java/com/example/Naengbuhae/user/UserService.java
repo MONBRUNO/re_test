@@ -239,41 +239,44 @@ public class UserService {
         OAuthProvider provider = user.getProvider();
         String providerId = user.getProviderId();
 
-        // 1. ✨ [N+1 박멸] 사용자가 소유한 냉장고 데이터 벌크 삭제
-        //    하나씩 SELECT-DELETE 하던 비효율을 걷어내고, 관련 테이블을 쿼리 한 방씩으로 정리합니다.
+        // ── 1단계: 즉시 실행되는 벌크 SQL 삭제 ──
+        // @Modifying 벌크 DELETE는 호출 즉시 SQL로 나간다. 반면 파생 deleteBy~(SELECT 후 em.remove)는
+        // 큐에 쌓이기만 해서, 뒤따르는 clearAutomatically 쿼리의 em.clear()에 큐가 유실될 수 있다.
+        // 그래서 토큰류까지 전부 벌크 DELETE로 통일하고, 자식 → 부모 순서로 정리한다.
+
+        // 소유한 냉장고의 부속 데이터부터 (초대코드/활동로그/식재료/멤버)
         for (Fridge fridge : fridgeRepository.findByOwner(user)) {
             fridgeInviteRepository.deleteAllByFridgeInBatch(fridge);
             activityLogRepository.deleteAllByFridgeInBatch(fridge);
             ingredientRepository.deleteAllByFridgeInBatch(fridge);
             fridgeMemberRepository.deleteAllByFridgeInBatch(fridge);
-            fridgeRepository.delete(fridge); // Fridge 본체 삭제
         }
-
-        // 2. ✨ [성능 최적화] 다른 사람 냉장고에 멤버로 가입된 정보 정리 (벌크 삭제)
-        fridgeMemberRepository.findByUser(user).forEach(m -> 
+        // 다른 사람 냉장고에 멤버로 가입된 기록 정리
+        fridgeMemberRepository.findByUser(user).forEach(m ->
             fridgeMemberRepository.deleteByFridgeAndUserInBatch(m.getFridge(), user)
         );
 
-        // 3. ✨ [보안 및 성능] 사용자가 생성한 모든 부속 데이터 벌크 삭제 (쿼리 폭탄 제거)
+        // 사용자가 생성한 부속 데이터
         ingredientRepository.deleteAllByUserInBatch(user);
-        
         // 레시피 즐겨찾기: 본인이 한 것 + 내 레시피를 다른 사람이 한 것 한방에 정리
         recipeFavoriteRepository.deleteAllByUserInBatch(user);
         recipeFavoriteRepository.deleteAllByRecipeOwnerInBatch(user);
-        
-        // 레시피 본체 삭제 — 벌크 JPQL DELETE는 cascade를 타지 않아 자식 테이블
-        // (recipe_ingredients, recipe_steps) row가 고아로 남아 FK 위반(409)이 난다.
-        // 엔티티 단위 삭제로 cascade·orphanRemoval을 태워 자식까지 함께 정리한다.
-        recipeRepository.deleteAll(recipeRepository.findByUser(user));
-        
         shoppingItemRepository.deleteAllByUserInBatch(user);
         refreshTokenService.revokeAllForUser(user);
-        fcmTokenRepository.deleteByUser(user); // FcmToken은 단일 row라 유지
+        fcmTokenRepository.deleteByUser(user);
         notificationRepository.deleteAllByUserInBatch(user);
         activityLogRepository.deleteAllByActorInBatch(user);
         userTokenRepository.deleteByUser(user);
+        // 자식이 모두 빠진 냉장고 본체
+        fridgeRepository.deleteAllByOwnerInBatch(user);
 
-        // 4. 모든 연관 데이터가 벌크로 정리된 후 최종 사용자 삭제
+        // ── 2단계: cascade가 필요한 엔티티 삭제 ──
+        // 레시피는 recipe_ingredients / recipe_steps 자식이 있어 벌크 JPQL DELETE로는
+        // cascade가 안 된다. 엔티티 삭제 + flush로 자식까지 DB에서 확실히 지운 뒤 사용자를 삭제한다.
+        recipeRepository.deleteAll(recipeRepository.findByUser(user));
+        recipeRepository.flush();
+
+        // 모든 연관 데이터가 정리된 후 최종 사용자 삭제
         userRepository.delete(user);
 
         if (provider == OAuthProvider.KAKAO && providerId != null) {

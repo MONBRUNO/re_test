@@ -11,6 +11,11 @@ public interface FridgeRepository extends JpaRepository<Fridge, UUID> {
 
     List<Fridge> findByOwner(User owner);
 
+    // 탈퇴 시: 자식(멤버/식재료/활동로그/초대코드)을 모두 정리한 뒤 호출하는 즉시 벌크 DELETE.
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("delete from Fridge f where f.owner = :owner")
+    void deleteAllByOwnerInBatch(@org.springframework.data.repository.query.Param("owner") User owner);
+
     // 특정 사용자가 멤버로 가입된 모든 냉장고 (소유 + 공유 받은 것 합쳐서).
     // FridgeMember 테이블 join — owner도 자기 fridge의 멤버이므로 결과에 포함됨.
     // ✨ [N+1 박멸] EntityGraph를 사용하여 members와 그 안의 user까지 한 방에 fetch join!

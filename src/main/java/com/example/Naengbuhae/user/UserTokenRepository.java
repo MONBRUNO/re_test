@@ -17,5 +17,8 @@ public interface UserTokenRepository extends JpaRepository<UserToken, Long> {
            "WHERE t.user = :user AND t.type = :type AND t.used = false")
     void invalidateOlder(@Param("user") User user, @Param("type") UserToken.Type type);
 
-    void deleteByUser(User user);
+    // 즉시 실행 벌크 DELETE — 탈퇴 트랜잭션에서 큐 유실 없이 확실히 삭제한다.
+    @Modifying
+    @Query("delete from UserToken t where t.user = :user")
+    void deleteByUser(@Param("user") User user);
 }

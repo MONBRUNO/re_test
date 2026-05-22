@@ -16,7 +16,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     void deleteByToken(String token);
 
-    void deleteByUser(User user);
+    // 즉시 실행 벌크 DELETE. 파생 deleteBy~는 SELECT 후 em.remove()로 큐에 쌓기만 해서
+    // 이후 @Modifying(clearAutomatically) 쿼리의 em.clear()에 큐가 통째로 유실될 수 있다.
+    @Modifying
+    @Query("delete from RefreshToken r where r.user = :user")
+    void deleteByUser(@Param("user") User user);
 
     // 만료된 refresh token + 폐기 후 일정 시간이 지난 토큰을 한 번에 삭제.
     //   - expires_at < now: 자연 만료
