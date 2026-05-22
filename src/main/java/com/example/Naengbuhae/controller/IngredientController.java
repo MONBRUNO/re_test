@@ -4,28 +4,48 @@ import com.example.Naengbuhae.dto.ExpiringIngredientResponseDto;
 import com.example.Naengbuhae.dto.IngredientImportRequestDto;
 import com.example.Naengbuhae.dto.IngredientRequestDto;
 import com.example.Naengbuhae.dto.IngredientResponseDto;
+import com.example.Naengbuhae.service.IngredientNutritionService;
 import com.example.Naengbuhae.service.IngredientService;
 import com.example.Naengbuhae.user.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/ingredients")
 @RequiredArgsConstructor
 public class IngredientController {
 
     private final IngredientService ingredientService;
+    private final IngredientNutritionService ingredientNutritionService;
 
     // POST: 저장할 때 현재 로그인한 사용자의 정보를 Principal에서 가져옴.
     // 응답에 allergyWarnings를 포함해 등록 직후 알레르기 매칭 안내가 가능 (이전엔 Long ID만 반환)
     @PostMapping
     public IngredientResponseDto create(@Valid @RequestBody IngredientRequestDto requestDto, Principal principal) {
         return ingredientService.saveIngredient(requestDto, principal.getName());
+    }
+
+    // POST /nutrition: 식재료 이름 목록 → 100g당 영양정보 일괄 조회 (Gemini). 영양분석 페이지용.
+    //   body: {"names": ["계란", "농심 튀김우동 큰사발", ...]}
+    //   응답: {"items": [{"name","calories","protein","carbs","fat"}, ...]}
+    //   조회 실패해도 빈 items로 응답 — 프론트가 내장 DB로 fallback한다.
+    @PostMapping("/nutrition")
+    public Map<String, Object> nutrition(@RequestBody Map<String, List<String>> body) {
+        List<String> names = body.get("names");
+        try {
+            return Map.of("items", ingredientNutritionService.lookup(names));
+        } catch (Exception e) {
+            log.warn("식재료 영양정보 조회 실패", e);
+            return Map.of("items", List.of());
+        }
     }
 
     // GET: 식재료 조회. fridgeId 안 주면 사용자의 기본 냉장고.
