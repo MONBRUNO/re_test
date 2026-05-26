@@ -2900,3 +2900,17 @@ User를 참조하는 11개 엔티티(Fridge·FridgeMember·Ingredient·ActivityL
 - 실패 시 빈 `plan` 응답 → 프론트가 규칙 기반 순환 로직으로 fallback
 
 **커밋**: `5dbfc16`
+
+---
+
+## 🚨 Sentry 에러 모니터링 연동 (2026-05-26)
+
+프로덕션에서 발생한 예외·스택트레이스를 자동 캡쳐해 Sentry 대시보드로 전송. 사용자가 따로 제보하지 않아도 문제를 감지하기 위한 운영용 모니터링.
+
+- `build.gradle` — `io.sentry:sentry-spring-boot-starter-jakarta:7.21.0` + `sentry-logback:7.21.0`
+- `application-prod.properties` — Sentry 설정 추가:
+  - `sentry.dsn=${SENTRY_DSN:}` — DSN은 Render 환경변수로 주입. 비어있으면 SDK가 자동 no-op (로컬 dev에선 동작 안 함)
+  - `sentry.environment=prod` / `sentry.send-default-pii=false` (이메일·IP 등 PII 미전송)
+  - `sentry.traces-sample-rate=0.0` — 성능 트레이스 비활성. 무료 한도(5K events/월) 보호용
+  - `sentry.logging.minimum-event-level=error` — ERROR 레벨 로그만 Sentry 전송 (WARN 이하는 콘솔만)
+- 운영 적용: Render 대시보드 → Environment → `SENTRY_DSN` 환경변수 추가 → 자동 재배포로 활성화
